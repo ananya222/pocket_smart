@@ -1,0 +1,6 @@
+{
+  "USER_EXIST_QUERY": "SELECT id, password, full_name, email, phone_number FROM users WHERE email = %s OR phone_number = %s",
+  "CHECK_EMAIL_QUERY": "SELECT 1 FROM users WHERE email = %s",
+  "CHECK_PHONE_QUERY": "SELECT 1 FROM users WHERE phone_number = %s",
+  "INSERT_USER_QUERY": "INSERT INTO users (full_name, phone_number, email, password) VALUES (%s, %s, %s, %s)"
+}

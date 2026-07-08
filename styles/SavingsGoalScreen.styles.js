@@ -182,24 +182,23 @@ export const styles = StyleSheet.create({
     width: "100%",
     height: 50,
     borderRadius: 25,
-    shadowColor: "#3C096C",
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
     marginTop: "auto",
     marginBottom: 8,
   },
 
-  buttonGradient: {
+  buttonSolid: {
     flex: 1,
     borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(157, 78, 221, 0.65)",
+    backgroundColor: "rgba(157, 78, 221, 0.28)",
   },
 
   buttonText: {
     color: "#FFFFFF",
+    fontWeight: "700",
     fontSize: 15,
     fontFamily: "DMSerifDisplay-Regular",
     letterSpacing: 0.5,

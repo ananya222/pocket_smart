@@ -11,12 +11,10 @@ import {
   StatusBar,
   useWindowDimensions,
   Animated,
-  Image,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import BackgroundGrid from "../components/BackgroundGrid";
 import { styles, chartStyles } from "../styles/PocketMoneyScreen.styles";
-import { Feather, FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─────────────────────────────────────────────
@@ -162,12 +160,7 @@ export default function PocketMoneyScreen({ navigation, route }) {
 
   // ── Render ─────────────────────────────────
   return (
-    <LinearGradient
-      colors={["#9D4EDD", "#7B2CBF"]}
-      start={{ x: 1, y: 0 }}
-      end={{ x: 0, y: 1 }}
-      style={styles.mainContainer}
-    >
+    <View style={styles.mainContainer}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <BackgroundGrid type="pocket_money" />
@@ -176,8 +169,9 @@ export default function PocketMoneyScreen({ navigation, route }) {
       <TouchableOpacity
         onPress={() => navigation.navigate("Welcome")}
         style={[styles.backButtonContainer, { top: STATUS_BAR_HEIGHT + 10 }]}
+        activeOpacity={0.7}
       >
-        <Feather name="arrow-left" size={22} color="#FFFFFF" />
+        <Feather name="arrow-left" size={20} color="#FFFFFF" />
       </TouchableOpacity>
 
       {/* Header */}
@@ -191,12 +185,13 @@ export default function PocketMoneyScreen({ navigation, route }) {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Allowance Input ─────────────────── */}
+        <Text style={styles.sectionTitle}>Allowance Amount</Text>
         <View style={[styles.inputContainer, isFocused && styles.inputContainerFocused]}>
           <Text style={styles.currencySymbol}>₹</Text>
           <TextInput
             style={styles.inputFlex}
             placeholder="5,000"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#6C6F8F"
             keyboardType="numeric"
             value={allowance}
             onChangeText={handleAllowanceChange}
@@ -263,12 +258,11 @@ export default function PocketMoneyScreen({ navigation, route }) {
               onResponderMove={(evt) => handleTouch(evt.nativeEvent.pageY)}
             >
               {/* Track */}
-              <View style={[styles.sliderTrack, { backgroundColor: "#7B2CBF" }]}>
+              <View style={styles.sliderTrack}>
                 {/* Active (spending) fill — from top down */}
                 <View
                   style={[
                     styles.sliderActiveTrack,
-                    styles.sliderActiveTrackFill,
                     { height: `${spendingPercent}%` },
                   ]}
                 />
@@ -317,7 +311,7 @@ export default function PocketMoneyScreen({ navigation, route }) {
             onPress={() => navigation.navigate("Welcome")}
             onPressIn={() => handlePressIn(backScale)}
             onPressOut={() => handlePressOut(backScale)}
-            activeOpacity={1}
+            activeOpacity={0.8}
             style={styles.backButton}
           >
             <Animated.View style={{ transform: [{ scale: backScale }] }}>
@@ -340,18 +334,13 @@ export default function PocketMoneyScreen({ navigation, route }) {
             style={styles.nextButton}
           >
             <Animated.View style={nextScaleStyle}>
-              <LinearGradient
-                colors={["#9D4EDD", "#7B2CBF"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.nextButtonGradient}
-              >
+              <View style={styles.nextButtonSolid}>
                 <Text style={styles.nextButtonText}>Next</Text>
-              </LinearGradient>
+              </View>
             </Animated.View>
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }

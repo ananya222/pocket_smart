@@ -1,4 +1,5 @@
 // AllocationScreen.js
+import { API_BASE_URL } from "../config";
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -14,7 +15,6 @@ import {
   ActivityIndicator,
   Modal
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,8 +26,21 @@ export default function AllocationScreen({ navigation, route }) {
   const isSmallDevice = height < 700;
 
   // Extract navigation parameters
-  const { user, savedAmount, newAllowance, newFrequency, goals } = route.params || {};
+  const { user, savedAmount, newAllowance, newFrequency, goals: rawGoals } = route.params || {};
   const onboarding = user?.onboarding || {};
+
+  // Normalize goal properties to handle both backend and frontend keys
+  const goals = (rawGoals || []).map(g => {
+    const idVal = g.id !== undefined ? String(g.id) : (g.goal_id !== undefined ? String(g.goal_id) : "");
+    const progressVal = g.progressAmount !== undefined ? g.progressAmount : (g.progress !== undefined ? g.progress : 0);
+    const targetVal = parseFloat(String(g.target !== undefined ? g.target : (g.targetAmount !== undefined ? g.targetAmount : (g.target_amount || 0))).replace(/,/g, "")) || 1000;
+    return {
+      ...g,
+      id: idVal,
+      progressAmount: progressVal,
+      target: targetVal
+    };
+  });
 
   const [isUpdating, setIsUpdating] = useState(false);
   const [allocationMode, setAllocationMode] = useState("equal"); // "equal" or "single"
@@ -141,7 +154,7 @@ export default function AllocationScreen({ navigation, route }) {
     const finalBalance = activeAllocationGoals.length === 0 ? newAllowance + savedAmount : newAllowance;
 
     try {
-      const response = await fetch("http://192.168.1.4:5000/update_allowance_savings", {
+      const response = await fetch(`${API_BASE_URL}/update_allowance_savings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -151,8 +164,9 @@ export default function AllocationScreen({ navigation, route }) {
           savingsProgress2: newSavingsProgress2,
           savingsProgress3: newSavingsProgress3,
           goalsProgress: goalsProgress,
-          allowance: finalBalance,
-          frequency: newFrequency || onboarding.frequency
+          allowance: newAllowance,
+          frequency: newFrequency || onboarding.frequency,
+          cycleLimit: finalBalance
         }),
       });
 
@@ -165,11 +179,12 @@ export default function AllocationScreen({ navigation, route }) {
           onboarding: {
             ...onboarding,
             currentBalance: finalBalance,
-            allowance: finalBalance.toLocaleString("en-IN"),
+            allowance: newAllowance.toLocaleString("en-IN"),
             frequency: newFrequency || onboarding.frequency,
             savingsProgressAmount: newSavingsProgress1,
             savingsProgress2: newSavingsProgress2,
             savingsProgress3: newSavingsProgress3,
+            cycleLimit: finalBalance
           },
         };
 
@@ -235,11 +250,12 @@ export default function AllocationScreen({ navigation, route }) {
         onboarding: {
           ...onboarding,
           currentBalance: finalBalance,
-          allowance: finalBalance.toLocaleString("en-IN"),
+          allowance: newAllowance.toLocaleString("en-IN"),
           frequency: newFrequency || onboarding.frequency,
           savingsProgressAmount: newSavingsProgress1,
           savingsProgress2: newSavingsProgress2,
           savingsProgress3: newSavingsProgress3,
+          cycleLimit: finalBalance
         },
       };
 
@@ -319,7 +335,7 @@ export default function AllocationScreen({ navigation, route }) {
       >
         <Text style={styles.heading}>Allowance Refreshed</Text>
         <Text style={styles.subtitle}>
-          You saved ₹{savedAmount?.toLocaleString("en-IN")} this time! How would you like to allocate it?
+          You saved ₹{savedAmount?.toLocaleString("en-IN")} this {newFrequency === "Weekly" ? "week" : "month"}! How would you like to allocate it?
         </Text>
 
         {/* Mode Selector Option Cards */}
@@ -343,18 +359,13 @@ export default function AllocationScreen({ navigation, route }) {
               style={[styles.confirmButtonContainer, { marginTop: 24 }]}
             >
               <Animated.View style={[styles.buttonScaleWrapper, buttonScaleStyle(confirmScale)]}>
-                <LinearGradient
-                  colors={["#9D4EDD", "#7B2CBF"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.confirmButtonGradient}
-                >
+                <View style={styles.confirmButtonSolid}>
                   {isUpdating ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Text style={styles.confirmButtonText}>Continue</Text>
                   )}
-                </LinearGradient>
+                </View>
               </Animated.View>
             </TouchableOpacity>
           </>
@@ -464,18 +475,13 @@ export default function AllocationScreen({ navigation, route }) {
               style={styles.confirmButtonContainer}
             >
               <Animated.View style={[styles.buttonScaleWrapper, buttonScaleStyle(confirmScale)]}>
-                <LinearGradient
-                  colors={["#9D4EDD", "#7B2CBF"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.confirmButtonGradient}
-                >
+                <View style={styles.confirmButtonSolid}>
                   {isUpdating ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Text style={styles.confirmButtonText}>Save & Apply Allocation</Text>
                   )}
-                </LinearGradient>
+                </View>
               </Animated.View>
             </TouchableOpacity>
           </>
@@ -660,10 +666,14 @@ const styles = StyleSheet.create({
   buttonScaleWrapper: {
     flex: 1
   },
-  confirmButtonGradient: {
+  confirmButtonSolid: {
     flex: 1,
+    borderRadius: 24,
     justifyContent: "center",
-    alignItems: "center"
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(157, 78, 221, 0.65)",
+    backgroundColor: "rgba(157, 78, 221, 0.28)",
   },
   confirmButtonText: {
     color: "#FFFFFF",

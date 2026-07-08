@@ -3,26 +3,12 @@ import { StyleSheet, Platform } from "react-native";
 export const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#111210",
   },
 
-  scrollContainer: {
-    flexGrow: 1,
-    backgroundColor: "#FFFFFF",
-  },
-
-  headerWrapper: {
-    backgroundColor: "#7B2CBF",
-    position: "relative",
-    overflow: "hidden",
-  },
-
-  buttonScaleWrapper: {
-    flex: 1,
-  },
-  sliderActiveTrackFill: {
-    backgroundColor: "#0088FF",
-    top: 0,
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 40,
   },
 
   headerTextContainer: {
@@ -31,71 +17,46 @@ export const styles = StyleSheet.create({
     justifyContent: "flex-start",
     alignItems: "flex-start",
     paddingTop: 15,
+    marginBottom: 20,
   },
 
   headerTitle: {
     color: "#FFFFFF",
-    fontSize: 42,
-    lineHeight: 48,
+    fontSize: 32,
+    lineHeight: 38,
     fontFamily: "DMSerifDisplay-Regular",
     textAlign: "left",
   },
 
-  headerDescription: {
-    color: "#FFFFFF",
-    opacity: 0.85,
-    marginTop: 8,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: "DMSerifDisplay-Regular",
-    textAlign: "right",
-  },
-
-  card: {
-    flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.93)",
-    borderTopLeftRadius: 36,
-    borderTopRightRadius: 36,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 24,
-    marginTop: 120,
-  },
-
   sectionTitle: {
     fontSize: 12,
-    color: "#4B5563", // Subtle grey label color
-    marginBottom: 8,
+    color: "#8A90A8",
+    marginBottom: 10,
     fontFamily: "DMSerifDisplay-Regular",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
 
   /* Input Container */
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "rgba(17, 18, 16, 0.8)",
     borderRadius: 12,
     paddingHorizontal: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "rgba(255, 255, 255, 0.05)",
     height: 50,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
   },
 
   inputContainerFocused: {
-    borderColor: "#7B2CBF",
+    borderColor: "#9D4EDD",
   },
 
   currencySymbol: {
     fontSize: 18,
-    color: "#1F2937",
+    color: "#FFFFFF",
     marginRight: 8,
     fontFamily: "DMSerifDisplay-Regular",
   },
@@ -104,7 +65,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     height: "100%",
     fontSize: 16,
-    color: "#1F2937",
+    color: "#FFFFFF",
     fontFamily: "DMSerifDisplay-Regular",
   },
 
@@ -117,7 +78,7 @@ export const styles = StyleSheet.create({
 
   frequencyLabel: {
     fontSize: 13,
-    color: "#4B5563",
+    color: "#8A90A8",
     marginRight: 12,
     fontFamily: "DMSerifDisplay-Regular",
     textTransform: "uppercase",
@@ -125,9 +86,11 @@ export const styles = StyleSheet.create({
 
   pillContainer: {
     flexDirection: "row",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
     borderRadius: 20,
     padding: 3,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.05)",
   },
 
   frequencyPill: {
@@ -141,42 +104,37 @@ export const styles = StyleSheet.create({
   },
 
   activePillMonthly: {
-    backgroundColor: "#7B2CBF",
+    backgroundColor: "#9D4EDD",
   },
 
   frequencyPillText: {
     fontSize: 13,
-    color: "#6B7280",
+    color: "#8A90A8",
     fontFamily: "DMSerifDisplay-Regular",
   },
 
   activePillText: {
     color: "#FFFFFF",
+    fontWeight: "bold",
   },
 
   /* Spending vs Saving Section */
   ratioContainer: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "rgba(255, 255, 255, 0.02)",
     borderRadius: 16,
-    padding: 24,
+    padding: 20,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
+    borderColor: "rgba(255, 255, 255, 0.06)",
   },
 
   /* Vertical Slider Styles */
   sliderColumn: {
     width: "30%",
-    height: "100%",
+    height: 240,
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: 4,
@@ -184,7 +142,7 @@ export const styles = StyleSheet.create({
 
   sliderLabel: {
     fontSize: 11,
-    color: "#4B5563",
+    color: "#8A90A8",
     fontFamily: "DMSerifDisplay-Regular",
     textTransform: "uppercase",
     marginVertical: 4,
@@ -203,7 +161,7 @@ export const styles = StyleSheet.create({
     width: 6,
     height: "100%",
     borderRadius: 3,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     position: "relative",
     overflow: "hidden",
   },
@@ -212,6 +170,8 @@ export const styles = StyleSheet.create({
     width: "100%",
     position: "absolute",
     left: 0,
+    top: 0,
+    backgroundColor: "#0088FF",
   },
 
   sliderThumb: {
@@ -220,7 +180,7 @@ export const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: "#FFFFFF",
     borderWidth: 3,
-    borderColor: "#7B2CBF",
+    borderColor: "#9D4EDD",
     position: "absolute",
     alignItems: "center",
     justifyContent: "center",
@@ -241,13 +201,13 @@ export const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#7B2CBF",
+    backgroundColor: "#9D4EDD",
   },
 
   /* Pie Chart Column */
   chartColumn: {
     width: "65%",
-    height: "100%",
+    height: 240,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -275,25 +235,26 @@ export const styles = StyleSheet.create({
   },
 
   dotPurple: {
-    backgroundColor: "#7B2CBF",
+    backgroundColor: "#9D4EDD",
   },
 
   chartLabelText: {
-    fontSize: 13,
-    color: "#4B5563",
+    fontSize: 12,
+    color: "#8A90A8",
     fontFamily: "DMSerifDisplay-Regular",
     flex: 1,
   },
 
   chartLabelBold: {
     fontFamily: "DMSerifDisplay-Regular",
+    color: "#FFFFFF",
   },
 
   /* Buttons Row */
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: "auto",
+    marginTop: 10,
     paddingBottom: Platform.OS === "ios" ? 10 : 10,
     width: "100%",
   },
@@ -302,9 +263,9 @@ export const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     borderRadius: 26,
-    backgroundColor: "transparent",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 8,
@@ -321,33 +282,39 @@ export const styles = StyleSheet.create({
     height: 52,
     borderRadius: 26,
     marginLeft: 8,
-    shadowColor: "#3C096C",
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
   },
 
-  nextButtonGradient: {
+  nextButtonSolid: {
     flex: 1,
     borderRadius: 26,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(157, 78, 221, 0.65)",
+    backgroundColor: "rgba(157, 78, 221, 0.28)",
   },
 
   nextButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
+    fontWeight: "700",
     fontFamily: "DMSerifDisplay-Regular",
     letterSpacing: 0.5,
   },
 
   backButtonContainer: {
     position: "absolute",
-    left: 14,
+    left: 16,
     zIndex: 10,
     padding: 10,
-    backgroundColor: "transparent",
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.06)",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    width: 40,
+    height: 40,
   },
 });
 
@@ -355,13 +322,13 @@ export const chartStyles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-    width: 150,
-    height: 150,
+    width: 130,
+    height: 130,
   },
   circleBlue: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: 130,
+    height: 130,
+    borderRadius: 65,
     backgroundColor: "#0088FF",
     position: "relative",
     overflow: "hidden",
@@ -370,30 +337,30 @@ export const chartStyles = StyleSheet.create({
     position: "absolute",
     right: 0,
     top: 0,
-    width: 77,
-    height: 150,
+    width: 65,
+    height: 130,
     overflow: "hidden",
   },
   leftHalfContainer: {
     position: "absolute",
     left: 0,
     top: 0,
-    width: 77,
-    height: 150,
+    width: 65,
+    height: 130,
     overflow: "hidden",
   },
   halfCircleContainer: {
-    width: 150,
-    height: 150,
+    width: 130,
+    height: 130,
     backgroundColor: "transparent",
     position: "absolute",
   },
   halfCirclePurpleLeft: {
-    width: 77,
-    height: 150,
-    backgroundColor: "#7B2CBF",
-    borderTopLeftRadius: 75,
-    borderBottomLeftRadius: 75,
+    width: 65,
+    height: 130,
+    backgroundColor: "#9D4EDD",
+    borderTopLeftRadius: 65,
+    borderBottomLeftRadius: 65,
     position: "absolute",
     left: 0,
     top: 0,
@@ -402,6 +369,6 @@ export const chartStyles = StyleSheet.create({
     left: 0,
   },
   rightHalfPurple: {
-    left: -73,
+    left: -65,
   },
 });

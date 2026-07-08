@@ -1,9 +1,0 @@
-{
-  "GET_USER_GOAL_COUNT_QUERY": "SELECT COUNT(*) FROM user_goals WHERE user_id = %s",
-  "CHECK_USER_GOAL_EXISTS_QUERY": "SELECT COUNT(*) FROM user_goals WHERE user_id = %s AND name = %s",
-  "INSERT_USER_GOAL_QUERY": "INSERT INTO user_goals (user_id, name, target_amount, time_to_reach, image_url, progress_amount, is_active) VALUES (%s, %s, %s, %s, %s, %s, 1)",
-  "UPDATE_USER_GOAL_PROGRESS_QUERY": "UPDATE user_goals SET progress_amount = %s WHERE id = %s AND user_id = %s",
-  "SELECT_ACTIVE_GOAL_PROGRESS_QUERY": "SELECT progress_amount FROM user_goals WHERE user_id = %s AND name = (SELECT savings_goal_name FROM user_onboarding WHERE user_id = %s) LIMIT 1",
-  "GET_USER_GOALS_QUERY": "SELECT * FROM user_goals WHERE user_id = %s ORDER BY id DESC",
-  "DELETE_USER_GOAL_QUERY": "DELETE FROM user_goals WHERE id = %s AND user_id = %s"
-}

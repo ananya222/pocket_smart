@@ -1,4 +1,5 @@
 // ConfirmGoalScreen.js
+import { API_BASE_URL } from "../config";
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -13,9 +14,8 @@ import {
   Animated,
   useWindowDimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BackgroundGrid from "../components/BackgroundGrid";
 
@@ -28,6 +28,42 @@ export default function ConfirmGoalScreen({ navigation, route }) {
   const { user, goalName, targetAmount, goalImage, timeToReach } = route.params || {};
   const onboarding = user?.onboarding || {};
   const frequency = onboarding.frequency || "Monthly";
+
+  const getGoalIcon = (name) => {
+    if (!name) return { lib: Feather, name: "target", color: "#9D4EDD" };
+    const q = name.toLowerCase().trim();
+    if (q.includes("shoe") || q.includes("nike") || q.includes("adidas") || q.includes("sneaker") || q.includes("puma") || q.includes("jordan") || q.includes("footwear")) {
+      return { lib: MaterialCommunityIcons, name: "shoe-sneaker", color: "#FF5E7E" };
+    }
+    if (q.includes("football") || q.includes("soccer") || q.includes("ball") || q.includes("cricket") || q.includes("bat") || q.includes("sport") || q.includes("gym") || q.includes("fit")) {
+      return { lib: Feather, name: "award", color: "#4EA8DE" };
+    }
+    if (q.includes("headphones") || q.includes("sony") || q.includes("music") || q.includes("earphone") || q.includes("airpods") || q.includes("headset") || q.includes("song")) {
+      return { lib: Feather, name: "headphones", color: "#9D4EDD" };
+    }
+    if (q.includes("controller") || q.includes("gamepad") || q.includes("ps5") || q.includes("playstation") || q.includes("xbox") || q.includes("nintendo") || q.includes("gaming") || q.includes("console")) {
+      return { lib: MaterialCommunityIcons, name: "gamepad-variant", color: "#FF9F1C" };
+    }
+    if (q.includes("bike") || q.includes("bicycle") || q.includes("cycle")) {
+      return { lib: MaterialCommunityIcons, name: "bike", color: "#2EC4B6" };
+    }
+    if (q.includes("laptop") || q.includes("macbook") || q.includes("computer") || q.includes("pc") || q.includes("monitor") || q.includes("tech") || q.includes("device") || q.includes("electronics")) {
+      return { lib: Feather, name: "laptop", color: "#70E000" };
+    }
+    if (q.includes("watch") || q.includes("smartwatch") || q.includes("rolex") || q.includes("accessory")) {
+      return { lib: Feather, name: "watch", color: "#FFD166" };
+    }
+    if (q.includes("book") || q.includes("novel") || q.includes("read") || q.includes("study") || q.includes("course")) {
+      return { lib: Feather, name: "book-open", color: "#FF6B6B" };
+    }
+    if (q.includes("car") || q.includes("drive") || q.includes("vehicle") || q.includes("tesla")) {
+      return { lib: Ionicons, name: "car-sport-outline", color: "#3A86C8" };
+    }
+    if (q.includes("travel") || q.includes("trip") || q.includes("flight") || q.includes("vacation") || q.includes("hotel")) {
+      return { lib: Ionicons, name: "airplane-outline", color: "#5BC0EB" };
+    }
+    return { lib: Feather, name: "target", color: "#9D4EDD" };
+  };
 
   const [isUpdating, setIsUpdating] = useState(false);
   const confirmScale = useRef(new Animated.Value(1)).current;
@@ -58,7 +94,7 @@ export default function ConfirmGoalScreen({ navigation, route }) {
   const handleConfirm = async () => {
     setIsUpdating(true);
     try {
-      const response = await fetch("http://192.168.1.4:5000/update_goal", {
+      const response = await fetch(`${API_BASE_URL}/update_goal`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -108,11 +144,11 @@ export default function ConfirmGoalScreen({ navigation, route }) {
       <View style={[styles.contentContainer, { paddingTop: STATUS_BAR_HEIGHT + 40, paddingBottom: insets.bottom + 20 }]}>
         {/* Product Image */}
         <View style={styles.productImageContainer}>
-          {goalImage ? (
-            <Image source={{ uri: goalImage }} style={styles.productImage} resizeMode="cover" />
-          ) : (
-            <Feather name="target" size={48} color="#9D4EDD" />
-          )}
+          {(() => {
+            const iconInfo = getGoalIcon(goalName);
+            const IconLib = iconInfo.lib;
+            return <IconLib name={iconInfo.name} size={48} color={iconInfo.color} />;
+          })()}
         </View>
 
         {/* Goal Name */}
@@ -161,18 +197,13 @@ export default function ConfirmGoalScreen({ navigation, route }) {
               style={{ flex: 1 }}
             >
               <Animated.View style={[styles.buttonScaleWrapper, buttonScaleStyle(confirmScale)]}>
-                <LinearGradient
-                  colors={["#9D4EDD", "#7B2CBF"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.confirmButtonGradient}
-                >
+                <View style={styles.confirmButtonSolid}>
                   {isUpdating ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Text style={styles.confirmButtonText}>Confirm</Text>
                   )}
-                </LinearGradient>
+                </View>
               </Animated.View>
             </TouchableOpacity>
           </View>
@@ -242,9 +273,9 @@ const styles = StyleSheet.create({
   cancelButton: {
     flex: 1,
     borderRadius: 25,
-    backgroundColor: "rgba(17, 18, 16, 0.68)",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -261,11 +292,14 @@ const styles = StyleSheet.create({
   buttonScaleWrapper: {
     flex: 1,
   },
-  confirmButtonGradient: {
+  confirmButtonSolid: {
     flex: 1,
     borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(157, 78, 221, 0.65)",
+    backgroundColor: "rgba(157, 78, 221, 0.28)",
   },
   confirmButtonText: {
     color: "#FFFFFF",

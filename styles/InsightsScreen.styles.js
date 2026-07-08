@@ -132,7 +132,7 @@ export const getStyles = (isSmallDevice) => StyleSheet.create({
   sectionTitle: {
     fontSize: 10,
     color: "#8A90A8",
-    fontFamily: "Geist-SemiBold",
+    fontFamily: "DMSerifDisplay-Regular",
     letterSpacing: 1.2,
     marginBottom: 12,
     textTransform: "uppercase",
@@ -234,13 +234,13 @@ export const getStyles = (isSmallDevice) => StyleSheet.create({
   transactionTitle: {
     fontSize: isSmallDevice ? 12 : 13,
     color: "#FFFFFF",
-    fontFamily: "Geist-SemiBold",
+    fontFamily: "DMSerifDisplay-Regular",
   },
 
   transactionCategory: {
     fontSize: 10,
     color: "#8A90A8",
-    fontFamily: "Geist-Regular",
+    fontFamily: "DMSerifDisplay-Regular",
     marginTop: 1,
   },
 
@@ -251,13 +251,13 @@ export const getStyles = (isSmallDevice) => StyleSheet.create({
   transactionAmount: {
     fontSize: isSmallDevice ? 12 : 13,
     color: "#FF6B6B",
-    fontFamily: "Geist-SemiBold",
+    fontFamily: "DMSerifDisplay-Regular",
   },
 
   transactionDate: {
     fontSize: 9,
     color: "#8A90A8",
-    fontFamily: "Geist-Regular",
+    fontFamily: "DMSerifDisplay-Regular",
     marginTop: 1,
   },
 
@@ -317,5 +317,73 @@ export const getStyles = (isSmallDevice) => StyleSheet.create({
         elevation: 4,
       },
     }),
+  },
+
+  /* Mode Toggle selector */
+  toggleContainer: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.06)",
+    padding: 3,
+    marginBottom: isSmallDevice ? 14 : 18,
+  },
+
+  togglePill: {
+    flex: 1,
+    height: 38,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  togglePillActive: {
+    backgroundColor: "rgba(157, 78, 221, 0.28)",
+    borderWidth: 1,
+    borderColor: "rgba(157, 78, 221, 0.65)",
+  },
+
+  toggleText: {
+    fontSize: 12,
+    color: "#8A90A8",
+    fontFamily: "Geist-Medium",
+  },
+
+  toggleTextActive: {
+    color: "#FFFFFF",
+  },
+
+  /* Range Selector pickers side-by-side */
+  rangePickersRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  pickerLabel: {
+    fontSize: 9,
+    color: "#8A90A8",
+    fontFamily: "Geist-Regular",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+    marginLeft: 4,
+  },
+
+  viewAllButton: {
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 255, 255, 0.06)",
+    marginHorizontal: isSmallDevice ? -12 : -16,
+    marginTop: 4,
+  },
+
+  viewAllText: {
+    fontSize: 12,
+    color: "#9D4EDD",
+    fontFamily: "Geist-Medium",
   },
 });

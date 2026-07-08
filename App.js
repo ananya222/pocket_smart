@@ -1,10 +1,12 @@
-import React, { useEffect } from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import React, { useEffect, useState } from "react";
+import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useFonts } from "expo-font";
 import { View, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as NavigationBar from "expo-navigation-bar";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_BASE_URL } from "./config";
 
 import LoginScreen from "./screens/LoginScreen";
 import SignupScreen from "./screens/SignupScreen";
@@ -21,11 +23,24 @@ import GoalAchievedScreen from "./screens/GoalAchievedScreen";
 import InsightsScreen from "./screens/InsightsScreen";
 import AddExpenseScreen from "./screens/AddExpenseScreen";
 import ExpenseReflectionScreen from "./screens/ExpenseReflectionScreen";
+import ProfileScreen from "./screens/ProfileScreen";
 
 
 const Stack = createNativeStackNavigator();
 
+const darkTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: "#111210",
+  },
+};
+
 export default function App() {
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [initialUser, setInitialUser] = useState(null);
+  const [initialRoute, setInitialRoute] = useState("Login");
+
   useEffect(() => {
     if (Platform.OS === "android") {
       NavigationBar.setPositionAsync("absolute");
@@ -35,111 +50,186 @@ export default function App() {
   }, []);
 
   const [fontsLoaded] = useFonts({
-    "SFProDisplay-Regular": require("./assets/fonts/SF-Pro-Display-Regular.ttf"),
-    "SFProDisplay-Bold": require("./assets/fonts/SF-Pro-Display-Bold.ttf"),
-    "DMSerifDisplay-Regular": require("./assets/fonts/DMSerifDisplay-Regular.ttf"),
-    "DMSans-Regular": require("./assets/fonts/DMSans-Regular.ttf"),
-    "Manrope": require("./assets/fonts/Manrope.ttf"),
-    "Geist-Regular": require("./assets/fonts/Geist-Regular.ttf"),
-    "Geist-SemiBold": require("./assets/fonts/Geist-SemiBold.ttf"),
+    // Map existing names to the new Source Serif Pro and Source Sans Pro fonts
+    "SFProDisplay-Regular": require("./assets/fonts/SourceSansPro-Regular.ttf"),
+    "SFProDisplay-Bold": require("./assets/fonts/SourceSansPro-Bold.ttf"),
+    "DMSerifDisplay-Regular": require("./assets/fonts/SourceSerifPro-Regular.ttf"),
+    "DMSans-Regular": require("./assets/fonts/SourceSansPro-Regular.ttf"),
+    "Manrope": require("./assets/fonts/SourceSansPro-Regular.ttf"),
+    "Geist-Regular": require("./assets/fonts/SourceSansPro-Regular.ttf"),
+    "Geist-SemiBold": require("./assets/fonts/SourceSansPro-SemiBold.ttf"),
+
+    // Native registrations
+    "SourceSerifPro-Regular": require("./assets/fonts/SourceSerifPro-Regular.ttf"),
+    "SourceSerifPro-Bold": require("./assets/fonts/SourceSerifPro-Bold.ttf"),
+    "SourceSansPro-Regular": require("./assets/fonts/SourceSansPro-Regular.ttf"),
+    "SourceSansPro-SemiBold": require("./assets/fonts/SourceSansPro-SemiBold.ttf"),
+    "SourceSansPro-Bold": require("./assets/fonts/SourceSansPro-Bold.ttf"),
   });
 
-  if (!fontsLoaded) {
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const sessionStr = await AsyncStorage.getItem("userSession");
+        if (sessionStr) {
+          const cachedUser = JSON.parse(sessionStr);
+          if (cachedUser && cachedUser.id) {
+            // Attempt to verify and get latest data from backend
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+              const response = await fetch(`${API_BASE_URL}/get_onboarding?userId=${cachedUser.id}`, {
+                signal: controller.signal
+              });
+              clearTimeout(timeoutId);
+              const data = await response.json();
+              if (response.ok && data && data.onboarding) {
+                // User is valid, update onboarding info and set route
+                const updatedUser = {
+                  ...cachedUser,
+                  onboardingCompleted: true,
+                  onboarding: data.onboarding
+                };
+                // Save fresh credentials back to storage
+                await AsyncStorage.setItem("userSession", JSON.stringify(updatedUser));
+                setInitialUser(updatedUser);
+                setInitialRoute("Dashboard");
+              } else if (response.status === 404) {
+                if (!cachedUser.onboardingCompleted) {
+                  setInitialUser(cachedUser);
+                  setInitialRoute("Welcome");
+                } else {
+                  // User no longer exists in DB - security checkout
+                  await AsyncStorage.removeItem("userSession");
+                  setInitialRoute("Login");
+                }
+              } else {
+                // Keep local cache if server is having other issues
+                setInitialUser(cachedUser);
+                if (cachedUser.onboardingCompleted) {
+                  setInitialRoute("Dashboard");
+                } else {
+                  setInitialRoute("Welcome");
+                }
+              }
+            } catch (apiErr) {
+              // Server is offline, fallback to locally cached session
+              setInitialUser(cachedUser);
+              if (cachedUser.onboardingCompleted) {
+                setInitialRoute("Dashboard");
+              } else {
+                setInitialRoute("Welcome");
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.log("Error verifying persisted session:", err);
+      } finally {
+        setCheckingSession(false);
+      }
+    };
+    
+    if (fontsLoaded) {
+      checkSession();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded || checkingSession) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#7B2CBF" }}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#111210" }}>
+        <ActivityIndicator size="large" color="#9D4EDD" />
       </View>
     );
   }
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator>
+      <NavigationContainer theme={darkTheme}>
+        <Stack.Navigator
+          initialRouteName={initialRoute}
+          screenOptions={{
+            headerShown: false,
+            animation: "fade",
+            contentStyle: { backgroundColor: "#111210" },
+            freezeOnBlur: false,
+          }}
+        >
         <Stack.Screen
           name="Login"
           component={LoginScreen}
-          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="Signup"
           component={SignupScreen}
-          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="Otp"
           component={OtpScreen}
-          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="Welcome"
           component={WelcomeScreen}
-          options={{ headerShown: false }}
+          initialParams={initialRoute === "Welcome" ? { user: initialUser } : undefined}
         />
 
         <Stack.Screen
           name="PocketMoney"
           component={PocketMoneyScreen}
-          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="SavingsGoal"
           component={SavingsGoalScreen}
-          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="OnboardingComplete"
           component={OnboardingCompleteScreen}
-          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="Dashboard"
           component={DashboardScreen}
-          options={{ headerShown: false }}
+          initialParams={initialRoute === "Dashboard" ? { user: initialUser } : undefined}
         />
 
         <Stack.Screen
           name="Goals"
           component={GoalsScreen}
-          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="ConfirmGoal"
           component={ConfirmGoalScreen}
-          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="Allocation"
           component={AllocationScreen}
-          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="GoalAchieved"
           component={GoalAchievedScreen}
-          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="Insights"
           component={InsightsScreen}
-          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="AddExpense"
           component={AddExpenseScreen}
-          options={{ headerShown: false }}
         />
         <Stack.Screen
-          name="ExpenseReflection"
+          name="Impact"
           component={ExpenseReflectionScreen}
-          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
         />
         </Stack.Navigator>
       </NavigationContainer>

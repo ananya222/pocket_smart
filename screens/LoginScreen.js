@@ -1,5 +1,6 @@
 // LoginScreen.js
 
+import { API_BASE_URL } from "../config";
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -14,9 +15,9 @@ import {
   Alert,
   Animated,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { Feather, FontAwesome } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { styles } from "../styles/LoginScreen.styles";
 import BackgroundGrid from "../components/BackgroundGrid";
 
@@ -53,6 +54,7 @@ function PremiumInput({ icon, placeholder, value, onChangeText, secureTextEntry,
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [keepLoggedIn, setKeepLoggedIn] = useState(true);
 
   // Animated button scale spring values
   const loginScale = useRef(new Animated.Value(1)).current;
@@ -91,7 +93,7 @@ export default function LoginScreen({ navigation }) {
     }).start();
   };
 
-  const handleDevBypass = () => {
+  const handleDevBypass = async () => {
     const mockUser = {
       id: 999,
       fullName: "Aarav Sharma",
@@ -106,6 +108,11 @@ export default function LoginScreen({ navigation }) {
         timeToReach: 6,
       },
     };
+    if (keepLoggedIn) {
+      await AsyncStorage.setItem("userSession", JSON.stringify(mockUser));
+    } else {
+      await AsyncStorage.removeItem("userSession");
+    }
     navigation.navigate("Dashboard", { user: mockUser });
   };
 
@@ -115,13 +122,18 @@ export default function LoginScreen({ navigation }) {
       return;
     }
     try {
-      const response = await fetch("http://192.168.1.4:5000/login", {
+      const response = await fetch(`${API_BASE_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password: password.trim() }),
       });
       const data = await response.json();
       if (response.ok) {
+        if (keepLoggedIn) {
+          await AsyncStorage.setItem("userSession", JSON.stringify(data.user));
+        } else {
+          await AsyncStorage.removeItem("userSession");
+        }
         if (data.user && data.user.onboardingCompleted) {
           navigation.navigate("Dashboard", { user: data.user });
         } else {
@@ -198,10 +210,35 @@ export default function LoginScreen({ navigation }) {
               isPassword={true}
             />
 
-            {/* Forgot Password Link */}
-            <TouchableOpacity style={styles.forgotPasswordContainer} activeOpacity={0.7}>
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </TouchableOpacity>
+            {/* Remember Me & Forgot Password Row */}
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4, marginBottom: 16 }}>
+              <TouchableOpacity
+                onPress={() => setKeepLoggedIn(!keepLoggedIn)}
+                activeOpacity={0.8}
+                style={{ flexDirection: "row", alignItems: "center" }}
+              >
+                <View style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: 4,
+                  borderWidth: 1,
+                  borderColor: keepLoggedIn ? "#9D4EDD" : "rgba(255, 255, 255, 0.15)",
+                  backgroundColor: keepLoggedIn ? "rgba(157, 78, 221, 0.15)" : "transparent",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 8
+                }}>
+                  {keepLoggedIn && <Feather name="check" size={10} color="#9D4EDD" />}
+                </View>
+                <Text style={{ color: "#8A90A8", fontSize: 12, fontFamily: "SFProDisplay-Regular" }}>
+                  Keep me logged in
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.forgotPasswordContainer, { marginBottom: 0, alignSelf: "auto" }]} activeOpacity={0.7}>
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Login Button */}
             <TouchableOpacity
@@ -212,14 +249,9 @@ export default function LoginScreen({ navigation }) {
               style={styles.loginButtonContainer}
             >
               <Animated.View style={[styles.buttonScaleWrapper, loginScaleStyle]}>
-                <LinearGradient
-                  colors={["#9D4EDD", "#7B2CBF"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.loginButtonGradient}
-                >
+                <View style={styles.loginButtonSolid}>
                   <Text style={styles.loginButtonText}>Log In</Text>
-                </LinearGradient>
+                </View>
               </Animated.View>
             </TouchableOpacity>
 

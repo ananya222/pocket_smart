@@ -1,4 +1,0 @@
-{
-  "INSERT_TRANSACTION_QUERY": "INSERT INTO user_transactions (user_id, title, category, amount, date, icon, month_label, avoidable, reason) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
-  "GET_TRANSACTIONS_QUERY": "SELECT id, title, category, amount, date, icon, month_label, avoidable, reason FROM user_transactions WHERE user_id = %s ORDER BY id DESC"
-}

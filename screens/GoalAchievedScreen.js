@@ -1,4 +1,5 @@
 // GoalAchievedScreen.js
+import { API_BASE_URL } from "../config";
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -13,7 +14,6 @@ import {
   useWindowDimensions,
   ActivityIndicator
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -130,7 +130,7 @@ export default function GoalAchievedScreen({ navigation, route }) {
     }
 
     try {
-      const response = await fetch("http://192.168.1.4:5000/update_allowance_savings", {
+      const response = await fetch(`${API_BASE_URL}/update_allowance_savings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -285,18 +285,13 @@ export default function GoalAchievedScreen({ navigation, route }) {
           style={styles.confirmButtonContainer}
         >
           <Animated.View style={[styles.buttonScaleWrapper, buttonScaleStyle(confirmScale)]}>
-            <LinearGradient
-              colors={["#9D4EDD", "#7B2CBF"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.confirmButtonGradient}
-            >
+            <View style={styles.confirmButtonSolid}>
               {isUpdating ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text style={styles.confirmButtonText}>Continue</Text>
               )}
-            </LinearGradient>
+            </View>
           </Animated.View>
         </TouchableOpacity>
       </ScrollView>
@@ -467,10 +462,14 @@ const styles = StyleSheet.create({
   buttonScaleWrapper: {
     flex: 1
   },
-  confirmButtonGradient: {
+  confirmButtonSolid: {
     flex: 1,
+    borderRadius: 24,
     justifyContent: "center",
-    alignItems: "center"
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(157, 78, 221, 0.65)",
+    backgroundColor: "rgba(157, 78, 221, 0.28)",
   },
   confirmButtonText: {
     color: "#FFFFFF",

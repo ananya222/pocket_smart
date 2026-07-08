@@ -1,5 +1,7 @@
+import { API_BASE_URL } from "../config";
 // DashboardScreen.js
 import React from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -16,16 +18,17 @@ import {
   Animated,
   StyleSheet
 } from "react-native";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { getStyles } from "../styles/DashboardScreen.styles";
 import BackgroundGrid from "../components/BackgroundGrid";
+// Force Metro Cache Invalidation to reload stylesheets: 2026-06-25T10:35:57
+
 
 export default function DashboardScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
   const isSmallDevice = height < 700;
   const staticCardWidth = width - (isSmallDevice ? 80 : 90);
-  const styles = getStyles(isSmallDevice);
 
   const [activeGoalIndex, setActiveGoalIndex] = React.useState(0);
   const accentColor = "#9D4EDD";
@@ -37,23 +40,148 @@ export default function DashboardScreen({ navigation, route }) {
 
   // Sidebar states & animated value
   const [isSidebarVisible, setIsSidebarVisible] = React.useState(false);
-  const sidebarSlide = React.useRef(new Animated.Value(width)).current;
+  const sidebarSlide = React.useRef(new Animated.Value(280)).current;
+  const backdropOpacity = React.useRef(new Animated.Value(0)).current;
 
   const toggleSidebar = () => {
     if (isSidebarVisible) {
-      Animated.timing(sidebarSlide, {
-        toValue: width,
-        duration: 250,
-        useNativeDriver: true,
-      }).start(() => setIsSidebarVisible(false));
+      Animated.parallel([
+        Animated.timing(sidebarSlide, {
+          toValue: 280,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: true,
+        })
+      ]).start(() => setIsSidebarVisible(false));
     } else {
       setIsSidebarVisible(true);
-      Animated.timing(sidebarSlide, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
+      Animated.parallel([
+        Animated.timing(sidebarSlide, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        })
+      ]).start();
     }
+  };
+
+  const renderDrawerContent = () => {
+    const iconColor = darkModeEnabled ? "#8A90A8" : "#5A607F";
+    return (
+      <View style={sidebarStyles.drawerContainer}>
+        {/* Top Spacer to prevent status bar clipping */}
+        <View style={{ height: Platform.OS === "ios" ? 75 : 70 }} />
+
+        {/* Profile Header */}
+        <View style={sidebarStyles.profileHeader}>
+          <View style={sidebarStyles.avatarWrapper}>
+            <Text style={sidebarStyles.avatarText}>{firstName[0]?.toUpperCase() || "A"}</Text>
+          </View>
+          <Text style={sidebarStyles.profileName} numberOfLines={1}>{fullName}</Text>
+          <Text style={sidebarStyles.profileEmail} numberOfLines={1}>{user.email || "user@pocketsmart.com"}</Text>
+        </View>
+
+        {/* Divider */}
+        <View style={sidebarStyles.divider} />
+
+        {/* Menu List */}
+        <ScrollView contentContainerStyle={sidebarStyles.menuScrollView} showsVerticalScrollIndicator={false}>
+          
+          <Text style={sidebarStyles.menuSectionLabel}>MENU</Text>
+
+          <TouchableOpacity 
+            style={sidebarStyles.menuItem} 
+            activeOpacity={0.7}
+            onPress={() => { toggleSidebar(); setTempAllowanceInput(allowance); setTempFrequency(frequency); setIsBudgetModalVisible(true); }}
+          >
+            <Feather name="sliders" size={16} color={iconColor} style={sidebarStyles.menuIcon} />
+            <Text style={sidebarStyles.menuItemText}>Allowance Configuration</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={sidebarStyles.menuItem} 
+            activeOpacity={0.7}
+            onPress={() => { toggleSidebar(); navigation.navigate("Goals", { user }); }}
+          >
+            <Feather name="target" size={16} color={iconColor} style={sidebarStyles.menuIcon} />
+            <Text style={sidebarStyles.menuItemText}>Savings Goals</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={sidebarStyles.menuItem} 
+            activeOpacity={0.7}
+            onPress={() => { toggleSidebar(); navigation.navigate("Insights", { user }); }}
+          >
+            <Feather name="bar-chart-2" size={16} color={iconColor} style={sidebarStyles.menuIcon} />
+            <Text style={sidebarStyles.menuItemText}>Spending Insights</Text>
+          </TouchableOpacity>
+
+          <View style={sidebarStyles.menuDivider} />
+
+          <Text style={sidebarStyles.menuSectionLabel}>PREFERENCES</Text>
+          
+          <View style={sidebarStyles.prefItem}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Feather name="bell" size={16} color={iconColor} style={sidebarStyles.menuIcon} />
+              <Text style={sidebarStyles.menuItemText}>Daily Reminders</Text>
+            </View>
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={handleToggleNotifications} 
+              style={[sidebarStyles.toggleContainer, notificationsEnabled && sidebarStyles.toggleActive]}
+            >
+              <View style={[sidebarStyles.toggleDot, notificationsEnabled && sidebarStyles.toggleDotActive]} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={sidebarStyles.prefItem}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Feather name="moon" size={16} color={iconColor} style={sidebarStyles.menuIcon} />
+              <Text style={sidebarStyles.menuItemText}>Dark Mode</Text>
+            </View>
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={handleToggleDarkMode} 
+              style={[sidebarStyles.toggleContainer, darkModeEnabled && sidebarStyles.toggleActive]}
+            >
+              <View style={[sidebarStyles.toggleDot, darkModeEnabled && sidebarStyles.toggleDotActive]} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={sidebarStyles.menuDivider} />
+
+          <Text style={sidebarStyles.menuSectionLabel}>SECURITY</Text>
+
+          <TouchableOpacity 
+            style={sidebarStyles.menuItem} 
+            activeOpacity={0.7}
+            onPress={() => { toggleSidebar(); setIsPasswordModalVisible(true); }}
+          >
+            <Feather name="lock" size={16} color={iconColor} style={sidebarStyles.menuIcon} />
+            <Text style={sidebarStyles.menuItemText}>Change Password</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[sidebarStyles.menuItem, { marginTop: 24 }]} 
+            activeOpacity={0.7}
+            onPress={() => { toggleSidebar(); handleLogout(); }}
+          >
+            <Feather name="log-out" size={16} color="#FF6B6B" style={sidebarStyles.menuIcon} />
+            <Text style={[sidebarStyles.menuItemText, { color: "#FF6B6B" }]}>Log Out</Text>
+          </TouchableOpacity>
+
+        </ScrollView>
+      </View>
+    );
   };
 
   // Budget & Frequency Modal States (Mock Mode)
@@ -84,7 +212,7 @@ export default function DashboardScreen({ navigation, route }) {
     Alert.alert("Success", "Allowance Configuration updated successfully!");
 
     // 2. Perform API call in background (non-blocking sync)
-    fetch("http://192.168.1.4:5000/update_allowance_savings", {
+    fetch(`${API_BASE_URL}/update_allowance_savings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -128,16 +256,78 @@ export default function DashboardScreen({ navigation, route }) {
       Alert.alert("Weak Password", "Password must be at least 4 characters.");
       return;
     }
-    setOldPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setIsPasswordModalVisible(false);
-    Alert.alert("Success", "Password updated successfully! (Mock Mode)");
+
+    fetch(`${API_BASE_URL}/change_password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: user.id || user.userId || route.params?.user?.id,
+        oldPassword: oldPassword,
+        newPassword: newPassword
+      })
+    })
+    .then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) {
+        Alert.alert("Error", data.error || "Failed to update password.");
+      } else {
+        Alert.alert("Success", "Password updated successfully!");
+        setOldPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setIsPasswordModalVisible(false);
+      }
+    })
+    .catch((err) => {
+      Alert.alert("Network Error", "Could not connect to server to update password.");
+      console.log("Password change failed:", err);
+    });
   };
 
-  // Preferences (Mock Mode Toggles)
+  // Preferences Toggles & Local Persistence
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = React.useState(true);
+
+  React.useEffect(() => {
+    const loadSavedPreferences = async () => {
+      try {
+        const savedReminders = await AsyncStorage.getItem("dailyRemindersEnabled");
+        const savedDarkMode = await AsyncStorage.getItem("darkModeEnabled");
+        if (savedReminders !== null) {
+          setNotificationsEnabled(savedReminders === "true");
+        }
+        if (savedDarkMode !== null) {
+          setDarkModeEnabled(savedDarkMode === "true");
+        }
+      } catch (e) {
+        console.log("Failed to load preferences:", e);
+      }
+    };
+    loadSavedPreferences();
+  }, []);
+
+  const handleToggleNotifications = async () => {
+    const nextVal = !notificationsEnabled;
+    setNotificationsEnabled(nextVal);
+    try {
+      await AsyncStorage.setItem("dailyRemindersEnabled", String(nextVal));
+    } catch (e) {
+      console.log("Failed to save daily reminders pref:", e);
+    }
+  };
+
+  const handleToggleDarkMode = async () => {
+    const nextVal = !darkModeEnabled;
+    setDarkModeEnabled(nextVal);
+    try {
+      await AsyncStorage.setItem("darkModeEnabled", String(nextVal));
+    } catch (e) {
+      console.log("Failed to save dark mode pref:", e);
+    }
+  };
+
+  const styles = getStyles(isSmallDevice, darkModeEnabled);
+  const sidebarStyles = getSidebarStyles(darkModeEnabled);
 
   // Extract user details and onboarding parameters
   const user = route.params?.user || {};
@@ -184,26 +374,6 @@ export default function DashboardScreen({ navigation, route }) {
   // Sync state with route params user object on transition back
   // Consolidated mount & focus route parameters sync is now handled in the main useEffect below.
 
-  // Dynamic calculations for Available Balance
-  const allowanceStr = typeof allowance === "string" ? allowance : String(allowance || "");
-  const cleanAllowance = parseFloat(allowanceStr.replace(/,/g, "")) || 5000;
-  const dynamicAllowanceLimit = cleanAllowance;
-  const spent = Math.max(0, dynamicAllowanceLimit - currentBalanceVal);
-  const formattedBalance = currentBalanceVal.toLocaleString("en-IN");
-  const formattedAllowance = dynamicAllowanceLimit.toLocaleString("en-IN");
-  const formattedSpent = spent.toLocaleString("en-IN");
-  const usedPercent = Math.round((spent / (dynamicAllowanceLimit || 1)) * 100);
-
-  console.log("RENDER DASHBOARD:", {
-    currentBalanceVal,
-    allowance,
-    cleanAllowance,
-    dynamicAllowanceLimit,
-    onboardingAllowance: onboardingData.allowance,
-    onboardingCurrentBalance: onboardingData.currentBalance,
-    routeParamsUserOnboarding: route.params?.user?.onboarding
-  });
-
   // Dynamic calculations for Savings Goal
   const targetAmountStr = typeof targetAmount === "string" ? targetAmount : String(targetAmount || "");
   const cleanTarget = parseFloat(targetAmountStr.replace(/,/g, "")) || 8000;
@@ -211,14 +381,35 @@ export default function DashboardScreen({ navigation, route }) {
   // Determine active icon for the user's custom goal
   const getSelectedIcon = (name) => {
     const q = name.toLowerCase();
-    if (q.includes("headphones") || q.includes("sony")) {
+    if (q.includes("headphones") || q.includes("sony") || q.includes("music") || q.includes("earphone") || q.includes("headset")) {
       return "headphones";
     }
-    if (q.includes("controller") || q.includes("ps5") || q.includes("playstation") || q.includes("game")) {
+    if (q.includes("controller") || q.includes("gamepad") || q.includes("ps5") || q.includes("playstation") || q.includes("xbox") || q.includes("nintendo") || q.includes("gaming")) {
       return "gamepad";
     }
     if (q.includes("bike") || q.includes("bicycle") || q.includes("cycle")) {
       return "bicycle";
+    }
+    if (q.includes("shoe") || q.includes("nike") || q.includes("adidas") || q.includes("sneaker") || q.includes("puma") || q.includes("jordan")) {
+      return "shoe";
+    }
+    if (q.includes("football") || q.includes("soccer") || q.includes("ball") || q.includes("cricket") || q.includes("bat") || q.includes("sport") || q.includes("gym") || q.includes("fit")) {
+      return "award";
+    }
+    if (q.includes("laptop") || q.includes("macbook") || q.includes("computer") || q.includes("pc") || q.includes("monitor") || q.includes("tech")) {
+      return "laptop";
+    }
+    if (q.includes("watch") || q.includes("smartwatch") || q.includes("rolex")) {
+      return "watch";
+    }
+    if (q.includes("book") || q.includes("novel") || q.includes("read") || q.includes("study")) {
+      return "book";
+    }
+    if (q.includes("car") || q.includes("drive") || q.includes("vehicle")) {
+      return "car";
+    }
+    if (q.includes("travel") || q.includes("trip") || q.includes("flight") || q.includes("vacation")) {
+      return "airplane";
     }
     return "target";
   };
@@ -245,10 +436,26 @@ export default function DashboardScreen({ navigation, route }) {
     try {
       const userId = user.id || user.userId || route.params?.user?.id;
       if (!userId) return;
-      const response = await fetch(`http://192.168.1.4:5000/get_onboarding?userId=${userId}`);
+      const response = await fetch(`${API_BASE_URL}/get_onboarding?userId=${userId}`);
       const data = await response.json();
       if (response.ok && data.onboarding) {
         setOnboardingData(data.onboarding);
+
+        // Check for cycle rollover
+        if (data.onboarding.rolloverDue) {
+          navigation.navigate("Allocation", {
+            user: {
+              ...user,
+              onboarding: data.onboarding
+            },
+            savedAmount: data.onboarding.savedAmount || 0,
+            newAllowance: parseFloat(String(data.onboarding.allowance || "5000").replace(/,/g, "")) || 5000,
+            newFrequency: data.onboarding.frequency || "Monthly",
+            goals: data.onboarding.goals || []
+          });
+          return;
+        }
+
         navigation.setParams({
           user: {
             ...user,
@@ -282,7 +489,7 @@ export default function DashboardScreen({ navigation, route }) {
     try {
       const userId = user.id || user.userId || route.params?.user?.id;
       if (!userId) return;
-      const response = await fetch(`http://192.168.1.4:5000/get_goals?userId=${userId}`);
+      const response = await fetch(`${API_BASE_URL}/get_goals?userId=${userId}`);
       const data = await response.json();
       if (response.ok && data.goals) {
         const mapped = data.goals.map((g) => {
@@ -299,10 +506,22 @@ export default function DashboardScreen({ navigation, route }) {
               : "2 weeks left",
             iconType: getSelectedIcon(g.name),
             image: g.image_url,
-            isActive: g.is_active === 1
+            isActive: g.is_active === 1,
+            priority: g.priority !== undefined && g.priority !== null ? parseInt(String(g.priority), 10) : 3
           };
         });
-        setDbGoals(mapped);
+
+        const sorted = mapped.sort((a, b) => {
+          if (a.priority !== b.priority) {
+            return a.priority - b.priority; // Ascending priority (1 comes first)
+          }
+          if (a.target !== b.target) {
+            return b.target - a.target; // Descending budget (highest target first)
+          }
+          return a.name.localeCompare(b.name); // Alphabetical sorting as a secondary tie-breaker
+        });
+
+        setDbGoals(sorted);
       }
     } catch (err) {
       console.log("Fetch goals failed:", err);
@@ -313,7 +532,7 @@ export default function DashboardScreen({ navigation, route }) {
     try {
       const userId = user.id || user.userId || route.params?.user?.id;
       if (!userId) return;
-      const response = await fetch(`http://192.168.1.4:5000/get_transactions?userId=${userId}`);
+      const response = await fetch(`${API_BASE_URL}/get_transactions?userId=${userId}`);
       const data = await response.json();
       if (response.ok && data.transactions) {
         setDbTransactions(data.transactions);
@@ -372,43 +591,59 @@ export default function DashboardScreen({ navigation, route }) {
 
   // Helper to render specific illustration/icon dynamically
   const renderGoalIcon = (iconType) => {
+    const size = isSmallDevice ? 20 : 24;
     if (iconType === "headphones") {
       return (
-        <Image 
-          source={require("../assets/images/savings_headphones.png")} 
-          style={{ 
-            width: isSmallDevice ? 30 : 36, 
-            height: isSmallDevice ? 30 : 36, 
-            borderRadius: 8, 
-            resizeMode: "contain" 
-          }} 
-        />
+        <Feather name="headphones" size={size} color={accentColor} />
       );
     }
     if (iconType === "gamepad") {
       return (
-        <MaterialCommunityIcons 
-          name="gamepad-variant" 
-          size={isSmallDevice ? 20 : 24} 
-          color={accentColor} 
-        />
+        <MaterialCommunityIcons name="gamepad-variant" size={size} color={accentColor} />
       );
     }
     if (iconType === "bicycle") {
       return (
-        <MaterialCommunityIcons 
-          name="bicycle" 
-          size={isSmallDevice ? 20 : 24} 
-          color={accentColor} 
-        />
+        <MaterialCommunityIcons name="bicycle" size={size} color={accentColor} />
+      );
+    }
+    if (iconType === "shoe") {
+      return (
+        <MaterialCommunityIcons name="shoe-sneaker" size={size} color={accentColor} />
+      );
+    }
+    if (iconType === "award") {
+      return (
+        <Feather name="award" size={size} color={accentColor} />
+      );
+    }
+    if (iconType === "laptop") {
+      return (
+        <Feather name="laptop" size={size} color={accentColor} />
+      );
+    }
+    if (iconType === "watch") {
+      return (
+        <Feather name="watch" size={size} color={accentColor} />
+      );
+    }
+    if (iconType === "book") {
+      return (
+        <Feather name="book-open" size={size} color={accentColor} />
+      );
+    }
+    if (iconType === "car") {
+      return (
+        <Ionicons name="car-sport-outline" size={size} color={accentColor} />
+      );
+    }
+    if (iconType === "airplane") {
+      return (
+        <Ionicons name="airplane-outline" size={size} color={accentColor} />
       );
     }
     return (
-      <Feather 
-        name="target" 
-        size={isSmallDevice ? 18 : 20} 
-        color={accentColor} 
-      />
+      <Feather name="target" size={isSmallDevice ? 18 : 20} color={accentColor} />
     );
   };
 
@@ -451,7 +686,7 @@ export default function DashboardScreen({ navigation, route }) {
     Alert.alert("Success", `₹${inputAmt.toLocaleString("en-IN")} successfully added to your current ${frequency.toLowerCase()} allowance!`);
 
     // 2. Perform API call in background (non-blocking sync)
-    fetch("http://192.168.1.4:5000/update_allowance_savings", {
+    fetch(`${API_BASE_URL}/update_allowance_savings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -475,83 +710,7 @@ export default function DashboardScreen({ navigation, route }) {
     });
   };
 
-  // Mock Transactions matching the mockup
-  const staticTransactions = [
-    {
-      id: "1",
-      title: "BigBasket",
-      category: "Groceries",
-      amount: -350,
-      date: "Today",
-      icon: "shopping-cart",
-      iconColor: "#9D4EDD"
-    },
-    {
-      id: "2",
-      title: "Amazon",
-      category: "Shopping",
-      amount: -450,
-      date: "Yesterday",
-      icon: "package",
-      iconColor: "#FFB03A"
-    },
-    {
-      id: "3",
-      title: "Swiggy",
-      category: "Food & Dining",
-      amount: -250,
-      date: "12 May 2024",
-      icon: "coffee",
-      iconColor: "#FF6B6B"
-    },
-    {
-      id: "4",
-      title: "Allowance Received",
-      category: "From PocketSmart",
-      amount: 5000,
-      date: "10 May 2024",
-      icon: "arrow-down-left",
-      iconColor: "#9D4EDD"
-    },
-    {
-      id: "5",
-      title: "Spotify Premium",
-      category: "Entertainment",
-      amount: -149,
-      date: "08 May 2024",
-      icon: "music",
-      iconColor: "#1DB954"
-    },
-    {
-      id: "6",
-      title: "Zomato",
-      category: "Food & Dining",
-      amount: -420,
-      date: "05 May 2024",
-      icon: "coffee",
-      iconColor: "#FF6B6B"
-    },
-    {
-      id: "7",
-      title: "Starbucks",
-      category: "Cafe",
-      amount: -320,
-      date: "01 May 2024",
-      icon: "coffee",
-      iconColor: "#00704A"
-    },
-    {
-      id: "8",
-      title: "Cashback Received",
-      category: "Refund",
-      amount: 100,
-      date: "28 Apr 2024",
-      icon: "arrow-down-left",
-      iconColor: "#9D4EDD"
-    }
-  ];
-
-  const getUniqueTransactions = (dbList, localList) => {
+    const getUniqueTransactions = (dbList, localList) => {
     const combined = [...(dbList || [])];
     (localList || []).forEach(localTx => {
       const exists = combined.some(dbTx => 
@@ -567,19 +726,36 @@ export default function DashboardScreen({ navigation, route }) {
     return combined;
   };
 
-  const transactions = [
-    ...getUniqueTransactions(dbTransactions, user.customTransactions).map(tx => ({
+  const transactions = getUniqueTransactions(dbTransactions, user.customTransactions)
+    .map(tx => ({
       ...tx,
       iconColor: "#9D4EDD" // Standard brand accent color for custom transaction icons
-    })),
-    ...staticTransactions
-  ].slice(0, 7);
+    }))
+    .slice(0, 7);
+
+  // Dynamic calculations for Available Balance
+  const allowanceStr = typeof allowance === "string" ? allowance : String(allowance || "");
+  const cycleLimitStr = typeof onboardingData.cycleLimit === "string" ? onboardingData.cycleLimit : String(onboardingData.cycleLimit || "");
+  const cleanAllowance = parseFloat(allowanceStr.replace(/,/g, "")) || 5000;
+  
+  // Use cycleLimit from backend, default to configured allowance, but ensure it is at least equal to the current balance
+  const dynamicAllowanceLimit = Math.max(
+    cleanAllowance,
+    currentBalanceVal,
+    parseFloat(cycleLimitStr.replace(/,/g, "")) || 0
+  );
+  const spent = Math.max(0, dynamicAllowanceLimit - currentBalanceVal);
+  const formattedBalance = currentBalanceVal.toLocaleString("en-IN");
+  const formattedAllowance = dynamicAllowanceLimit.toLocaleString("en-IN");
+  const formattedSpent = spent.toLocaleString("en-IN");
+  const usedPercent = Math.round((spent / (dynamicAllowanceLimit || 1)) * 100);
 
   const STATUS_BAR_HEIGHT = Platform.OS === "ios" ? 47 : (StatusBar.currentHeight || 24);
 
   return (
-    <SafeAreaView style={styles.mainContainer}>
-      <StatusBar barStyle="light-content" backgroundColor="#111210" />
+    <View style={styles.mainContainer}>
+      <SafeAreaView style={{ flex: 1 }}>
+      <StatusBar barStyle={darkModeEnabled ? "light-content" : "dark-content"} backgroundColor={darkModeEnabled ? "#111210" : "#F4F5F7"} />
       <BackgroundGrid type="dashboard" />
 
       <ScrollView
@@ -598,16 +774,16 @@ export default function DashboardScreen({ navigation, route }) {
             activeOpacity={0.8}
             onPress={toggleSidebar}
           >
-            <Feather name="menu" size={20} color="#FFFFFF" />
+            <Feather name="menu" size={20} color={darkModeEnabled ? "#FFFFFF" : "#111210"} />
           </TouchableOpacity>
         </View>
 
 
 
         {/* Available Balance Card */}
-        <BlurView intensity={100} tint="dark" style={styles.balanceCard}>
+        <BlurView intensity={100} tint={darkModeEnabled ? "dark" : "light"} style={styles.balanceCard}>
           <View style={styles.balanceHeader}>
-            <Feather name="eye" size={14} color="#8A90A8" />
+            <Feather name="eye" size={14} color={darkModeEnabled ? "#8A90A8" : "#5A607F"} />
             <Text style={styles.balanceHeaderText}>AVAILABLE BALANCE</Text>
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
@@ -617,7 +793,7 @@ export default function DashboardScreen({ navigation, route }) {
               activeOpacity={0.8}
               onPress={() => setIsAllowanceModalVisible(true)}
             >
-              <Feather name="plus" size={11} color="#FFFFFF" style={{ marginRight: 4 }} />
+              <Feather name="plus" size={11} color={darkModeEnabled ? "#FFFFFF" : "#111210"} style={{ marginRight: 4 }} />
               <Text style={styles.topUpText}>Top Up</Text>
             </TouchableOpacity>
           </View>
@@ -662,13 +838,14 @@ export default function DashboardScreen({ navigation, route }) {
             }
           }}
           scrollEventThrottle={200}
+          style={{ height: isSmallDevice ? 114 : 130, flexGrow: 0 }}
         >
           {activeCarouselGoals.length > 0 ? (
             activeCarouselGoals.map((g) => (
               <BlurView
                 key={g.id}
                 intensity={100}
-                tint="dark"
+                tint={darkModeEnabled ? "dark" : "light"}
                 style={[styles.goalCard, {
                   width: staticCardWidth,
                   marginRight: 12,
@@ -701,12 +878,12 @@ export default function DashboardScreen({ navigation, route }) {
                     {g.progressPercent >= 100 ? (
                       <Feather name="check-circle" size={14} color={accentColor} />
                     ) : (
-                      <Feather name="calendar" size={14} color="#8A90A8" />
+                      <Feather name="calendar" size={14} color={darkModeEnabled ? "#8A90A8" : "#5A607F"} />
                     )}
                     <Text style={[styles.goalTimeText, g.progressPercent >= 100 && { color: accentColor, fontWeight: "600" }]}>
                       {g.progressPercent >= 100 ? " Achieved!" : ` ${g.timeLeft}`}
                       {g.isActive && timeToReach > 0 && g.progressPercent < 100 && (
-                        <Text style={{ color: "#8A90A8", fontWeight: "normal" }}>
+                        <Text style={{ color: darkModeEnabled ? "#8A90A8" : "#5A607F", fontWeight: "normal" }}>
                           {" "}• ₹{Math.round(cleanTarget / timeToReach).toLocaleString("en-IN")}/{frequency === "Weekly" ? "wk" : "mo"}
                         </Text>
                       )}
@@ -719,7 +896,7 @@ export default function DashboardScreen({ navigation, route }) {
           ) : (
             <BlurView
               intensity={100}
-              tint="dark"
+              tint={darkModeEnabled ? "dark" : "light"}
               style={[styles.goalCard, {
                 width: staticCardWidth,
                 paddingVertical: isSmallDevice ? 16 : 24,
@@ -729,8 +906,8 @@ export default function DashboardScreen({ navigation, route }) {
               }]}
             >
               <Feather name="award" size={28} color={accentColor} style={{ marginBottom: 8 }} />
-              <Text style={{ fontSize: 13, color: "#FFFFFF", fontFamily: "DMSerifDisplay-Regular"}}>All Goals Achieved</Text>
-              <Text style={{ fontSize: 10, color: "#8A90A8", fontFamily: "DMSerifDisplay-Regular", marginTop: 2, textAlign: "center" }}>
+              <Text style={{ fontSize: 13, color: darkModeEnabled ? "#FFFFFF" : "#111210", fontFamily: "DMSerifDisplay-Regular"}}>{`All Goals Achieved`}</Text>
+              <Text style={{ fontSize: 10, color: darkModeEnabled ? "#8A90A8" : "#5A607F", fontFamily: "DMSerifDisplay-Regular", marginTop: 2, textAlign: "center" }}>
                 Your goals have been fully saved. Tap Goals below to start a new target.
               </Text>
             </BlurView>
@@ -773,33 +950,42 @@ export default function DashboardScreen({ navigation, route }) {
         </View>
 
         {/* Recent Transactions List */}
-        <BlurView intensity={100} tint="dark" style={styles.transactionCard}>
-          {transactions.map((tx, idx) => (
-            <View 
-              key={`${tx.id}-${idx}`} 
-              style={idx === transactions.length - 1 ? styles.transactionItemLast : styles.transactionItem}
-            >
-              <View style={styles.transactionIconWrapper}>
-                <Feather name={tx.icon} size={isSmallDevice ? 14 : 18} color={tx.iconColor} />
-              </View>
-              <View style={styles.transactionDetails}>
-                <Text style={styles.transactionTitle}>{tx.title}</Text>
-                <Text style={styles.transactionCategory}>{tx.category}</Text>
-              </View>
-              <View style={styles.transactionAmountContainer}>
-                <Text 
-                  style={
-                    tx.amount < 0 
-                      ? styles.transactionAmountNegative 
-                      : [styles.transactionAmountPositive, { color: accentColor }]
-                  }
-                >
-                  {tx.amount < 0 ? "-" : "+"}₹{Math.abs(tx.amount).toLocaleString("en-IN")}
-                </Text>
-                <Text style={styles.transactionDate}>{tx.date}</Text>
-              </View>
+        <BlurView intensity={100} tint={darkModeEnabled ? "dark" : "light"} style={styles.transactionCard}>
+          {transactions.length === 0 ? (
+            <View style={{ paddingVertical: 28, alignItems: "center", justifyContent: "center" }}>
+              <Feather name="activity" size={24} color={darkModeEnabled ? "rgba(255, 255, 255, 0.25)" : "rgba(0, 0, 0, 0.25)"} style={{ marginBottom: 8 }} />
+              <Text style={{ color: darkModeEnabled ? "#8A90A8" : "#5A607F", fontSize: 13, fontFamily: "Geist-Regular", textAlign: "center" }}>
+                No transactions yet
+              </Text>
             </View>
-          ))}
+          ) : (
+            transactions.map((tx, idx) => (
+              <View 
+                key={`${tx.id}-${idx}`} 
+                style={idx === transactions.length - 1 ? styles.transactionItemLast : styles.transactionItem}
+              >
+                <View style={styles.transactionIconWrapper}>
+                  <Feather name={tx.icon || "shopping-cart"} size={isSmallDevice ? 14 : 18} color={tx.iconColor} />
+                </View>
+                <View style={styles.transactionDetails}>
+                  <Text style={styles.transactionTitle}>{tx.title}</Text>
+                  <Text style={styles.transactionCategory}>{tx.category}</Text>
+                </View>
+                <View style={styles.transactionAmountContainer}>
+                  <Text 
+                    style={
+                      tx.amount < 0 
+                        ? styles.transactionAmountNegative 
+                        : [styles.transactionAmountPositive, { color: accentColor }]
+                    }
+                  >
+                    {tx.amount < 0 ? "-" : "+"}₹{Math.abs(tx.amount).toLocaleString("en-IN")}
+                  </Text>
+                  <Text style={styles.transactionDate}>{tx.date}</Text>
+                </View>
+              </View>
+            ))
+          )}
         </BlurView>
       </ScrollView>
 
@@ -807,7 +993,7 @@ export default function DashboardScreen({ navigation, route }) {
       <View style={styles.bottomNavBar}>
         <BlurView
           intensity={100}
-          tint="dark"
+          tint={darkModeEnabled ? "dark" : "light"}
           style={styles.navBlurView}
         />
         <TouchableOpacity style={styles.navItem} activeOpacity={0.7}>
@@ -819,7 +1005,7 @@ export default function DashboardScreen({ navigation, route }) {
           activeOpacity={0.7}
           onPress={() => navigation.navigate("Goals", { user })}
         >
-          <Feather name="target" size={21} color="#8A90A8" />
+          <Feather name="target" size={21} color={darkModeEnabled ? "#8A90A8" : "#5A607F"} />
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -835,11 +1021,15 @@ export default function DashboardScreen({ navigation, route }) {
           activeOpacity={0.7}
           onPress={() => navigation.navigate("Insights", { user })}
         >
-          <Feather name="bar-chart-2" size={21} color="#8A90A8" />
+          <Feather name="bar-chart-2" size={21} color={darkModeEnabled ? "#8A90A8" : "#5A607F"} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.7} onPress={handleLogout}>
-          <Feather name="user" size={21} color="#8A90A8" />
+        <TouchableOpacity 
+          style={styles.navItem} 
+          activeOpacity={0.7} 
+          onPress={() => navigation.navigate("Profile", { user })}
+        >
+          <Feather name="user" size={21} color={darkModeEnabled ? "#8A90A8" : "#5A607F"} />
         </TouchableOpacity>
       </View>
 
@@ -858,19 +1048,19 @@ export default function DashboardScreen({ navigation, route }) {
         }}>
           <BlurView
             intensity={90}
-            tint="dark"
+            tint={darkModeEnabled ? "dark" : "light"}
             style={{
               width: width - 40,
               borderRadius: 24,
               padding: 24,
               borderWidth: 1,
-              borderColor: "rgba(255, 255, 255, 0.08)",
-              backgroundColor: "rgba(26, 28, 25, 0.9)"
+              borderColor: darkModeEnabled ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)",
+              backgroundColor: darkModeEnabled ? "rgba(26, 28, 25, 0.9)" : "rgba(255, 255, 255, 0.95)"
             }}
           >
             <Text style={{
               fontSize: 18,
-              color: "#FFFFFF",
+              color: darkModeEnabled ? "#FFFFFF" : "#111210",
               fontFamily: "DMSerifDisplay-Regular",
               textAlign: "center",
               marginBottom: 8
@@ -880,7 +1070,7 @@ export default function DashboardScreen({ navigation, route }) {
             
             <Text style={{
               fontSize: 13,
-              color: "#8A90A8",
+              color: darkModeEnabled ? "#8A90A8" : "#5A607F",
               fontFamily: "DMSerifDisplay-Regular",
               textAlign: "center",
               marginBottom: 20,
@@ -892,25 +1082,25 @@ export default function DashboardScreen({ navigation, route }) {
             <View style={{
               flexDirection: "row",
               alignItems: "center",
-              backgroundColor: "rgba(17, 18, 16, 0.68)",
+              backgroundColor: darkModeEnabled ? "rgba(17, 18, 16, 0.68)" : "#FFFFFF",
               borderRadius: 10,
               paddingHorizontal: 12,
               borderWidth: 1,
-              borderColor: "rgba(255, 255, 255, 0.08)",
+              borderColor: darkModeEnabled ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)",
               height: 46,
               marginBottom: 24
             }}>
-              <Text style={{ fontSize: 16, marginRight: 6, color: "#8A90A8", fontFamily: "DMSerifDisplay-Regular" }}>₹</Text>
+              <Text style={{ fontSize: 16, marginRight: 6, color: darkModeEnabled ? "#8A90A8" : "#5A607F", fontFamily: "DMSerifDisplay-Regular" }}>₹</Text>
               <TextInput
                 style={{
                   flex: 1,
                   height: "100%",
                   fontSize: 15,
-                  color: "#FFFFFF",
+                  color: darkModeEnabled ? "#FFFFFF" : "#111210",
                   fontFamily: "DMSerifDisplay-Regular"
                 }}
                 placeholder="2,000"
-                placeholderTextColor="rgba(255, 255, 255, 0.2)"
+                placeholderTextColor={darkModeEnabled ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.3)"}
                 keyboardType="numeric"
                 value={newAllowanceInput}
                 onChangeText={(text) => {
@@ -932,15 +1122,15 @@ export default function DashboardScreen({ navigation, route }) {
                   flex: 1,
                   height: 42,
                   borderRadius: 21,
-                  backgroundColor: "rgba(17, 18, 16, 0.68)",
+                  backgroundColor: darkModeEnabled ? "rgba(17, 18, 16, 0.68)" : "#E5E7EB",
                   borderWidth: 1,
-                  borderColor: "rgba(255, 255, 255, 0.08)",
+                  borderColor: darkModeEnabled ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)",
                   justifyContent: "center",
                   alignItems: "center",
                   marginRight: 8
                 }}
               >
-                <Text style={{ color: "#8A90A8", fontSize: 13, fontFamily: "DMSerifDisplay-Regular" }}>
+                <Text style={{ color: darkModeEnabled ? "#8A90A8" : "#5A607F", fontSize: 13, fontFamily: "DMSerifDisplay-Regular" }}>
                   Cancel
                 </Text>
               </TouchableOpacity>
@@ -966,122 +1156,7 @@ export default function DashboardScreen({ navigation, route }) {
         </View>
       </Modal>
 
-      {/* Sidebar Drawer Overlay */}
-      {isSidebarVisible && (
-        <View style={sidebarStyles.overlayContainer}>
-          {/* Backdrop */}
-          <TouchableOpacity
-            style={sidebarStyles.backdrop}
-            activeOpacity={1}
-            onPress={toggleSidebar}
-          />
-          {/* Drawer Panel */}
-          <Animated.View style={[sidebarStyles.drawerPanel, { transform: [{ translateX: sidebarSlide }] }]}>
-            <BlurView intensity={100} tint="dark" style={sidebarStyles.drawerBlur}>
-              
-              {/* Profile Header */}
-              <View style={sidebarStyles.profileHeader}>
-                <View style={sidebarStyles.avatarWrapper}>
-                  <Text style={sidebarStyles.avatarText}>{firstName[0]?.toUpperCase() || "A"}</Text>
-                </View>
-                <Text style={sidebarStyles.profileName} numberOfLines={1}>{fullName}</Text>
-                <Text style={sidebarStyles.profileEmail} numberOfLines={1}>{user.email || "user@pocketsmart.com"}</Text>
-              </View>
 
-              {/* Divider */}
-              <View style={sidebarStyles.divider} />
-
-              {/* Menu List */}
-              <ScrollView contentContainerStyle={sidebarStyles.menuScrollView} showsVerticalScrollIndicator={false}>
-                
-                <Text style={sidebarStyles.menuSectionLabel}>MENU</Text>
-
-                <TouchableOpacity 
-                  style={sidebarStyles.menuItem} 
-                  activeOpacity={0.7}
-                  onPress={() => { toggleSidebar(); setTempAllowanceInput(allowance); setTempFrequency(frequency); setIsBudgetModalVisible(true); }}
-                >
-                  <Feather name="sliders" size={16} color="#8A90A8" style={sidebarStyles.menuIcon} />
-                  <Text style={sidebarStyles.menuItemText}>Allowance Configuration</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={sidebarStyles.menuItem} 
-                  activeOpacity={0.7}
-                  onPress={() => { toggleSidebar(); navigation.navigate("Goals", { user }); }}
-                >
-                  <Feather name="target" size={16} color="#8A90A8" style={sidebarStyles.menuIcon} />
-                  <Text style={sidebarStyles.menuItemText}>Savings Goals</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={sidebarStyles.menuItem} 
-                  activeOpacity={0.7}
-                  onPress={() => { toggleSidebar(); navigation.navigate("Insights", { user }); }}
-                >
-                  <Feather name="bar-chart-2" size={16} color="#8A90A8" style={sidebarStyles.menuIcon} />
-                  <Text style={sidebarStyles.menuItemText}>Spending Insights</Text>
-                </TouchableOpacity>
-
-                <View style={sidebarStyles.menuDivider} />
-
-                <Text style={sidebarStyles.menuSectionLabel}>PREFERENCES</Text>
-                
-                <View style={sidebarStyles.prefItem}>
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Feather name="bell" size={16} color="#8A90A8" style={sidebarStyles.menuIcon} />
-                    <Text style={sidebarStyles.menuItemText}>Daily Reminders</Text>
-                  </View>
-                  <TouchableOpacity 
-                    activeOpacity={0.8}
-                    onPress={() => setNotificationsEnabled(!notificationsEnabled)} 
-                    style={[sidebarStyles.toggleContainer, notificationsEnabled && sidebarStyles.toggleActive]}
-                  >
-                    <View style={[sidebarStyles.toggleDot, notificationsEnabled && sidebarStyles.toggleDotActive]} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={sidebarStyles.prefItem}>
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Feather name="moon" size={16} color="#8A90A8" style={sidebarStyles.menuIcon} />
-                    <Text style={sidebarStyles.menuItemText}>Dark Mode</Text>
-                  </View>
-                  <TouchableOpacity 
-                    activeOpacity={0.8}
-                    onPress={() => setDarkModeEnabled(!darkModeEnabled)} 
-                    style={[sidebarStyles.toggleContainer, darkModeEnabled && sidebarStyles.toggleActive]}
-                  >
-                    <View style={[sidebarStyles.toggleDot, darkModeEnabled && sidebarStyles.toggleDotActive]} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={sidebarStyles.menuDivider} />
-
-                <Text style={sidebarStyles.menuSectionLabel}>SECURITY</Text>
-
-                <TouchableOpacity 
-                  style={sidebarStyles.menuItem} 
-                  activeOpacity={0.7}
-                  onPress={() => { toggleSidebar(); setIsPasswordModalVisible(true); }}
-                >
-                  <Feather name="lock" size={16} color="#8A90A8" style={sidebarStyles.menuIcon} />
-                  <Text style={sidebarStyles.menuItemText}>Change Password</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[sidebarStyles.menuItem, { marginTop: 24 }]} 
-                  activeOpacity={0.7}
-                  onPress={() => { toggleSidebar(); handleLogout(); }}
-                >
-                  <Feather name="log-out" size={16} color="#FF6B6B" style={sidebarStyles.menuIcon} />
-                  <Text style={[sidebarStyles.menuItemText, { color: "#FF6B6B" }]}>Log Out</Text>
-                </TouchableOpacity>
-
-              </ScrollView>
-            </BlurView>
-          </Animated.View>
-        </View>
-      )}
 
       {/* Budget & Frequency Modal Sheet (Mock Mode) */}
       <Modal
@@ -1091,7 +1166,7 @@ export default function DashboardScreen({ navigation, route }) {
         onRequestClose={() => setIsBudgetModalVisible(false)}
       >
         <View style={sidebarStyles.modalBackdrop}>
-          <BlurView intensity={90} tint="dark" style={sidebarStyles.modalContent}>
+          <BlurView intensity={90} tint={darkModeEnabled ? "dark" : "light"} style={sidebarStyles.modalContent}>
             <Text style={sidebarStyles.modalTitle}>Allowance Configuration</Text>
             <Text style={sidebarStyles.modalSubtitle}>Configure your allowance settings below:</Text>
 
@@ -1158,7 +1233,7 @@ export default function DashboardScreen({ navigation, route }) {
         onRequestClose={() => setIsPasswordModalVisible(false)}
       >
         <View style={sidebarStyles.modalBackdrop}>
-          <BlurView intensity={90} tint="dark" style={sidebarStyles.modalContent}>
+          <BlurView intensity={90} tint={darkModeEnabled ? "dark" : "light"} style={sidebarStyles.modalContent}>
             <Text style={sidebarStyles.modalTitle}>Change Password</Text>
             <Text style={sidebarStyles.modalSubtitle}>Update your account security details:</Text>
 
@@ -1168,7 +1243,7 @@ export default function DashboardScreen({ navigation, route }) {
                 style={sidebarStyles.modalTextInputField}
                 secureTextEntry
                 placeholder="Enter current password"
-                placeholderTextColor="rgba(255, 255, 255, 0.25)"
+                placeholderTextColor={darkModeEnabled ? "rgba(255, 255, 255, 0.25)" : "rgba(0, 0, 0, 0.35)"}
                 value={oldPassword}
                 onChangeText={setOldPassword}
               />
@@ -1180,7 +1255,7 @@ export default function DashboardScreen({ navigation, route }) {
                 style={sidebarStyles.modalTextInputField}
                 secureTextEntry
                 placeholder="At least 4 characters"
-                placeholderTextColor="rgba(255, 255, 255, 0.25)"
+                placeholderTextColor={darkModeEnabled ? "rgba(255, 255, 255, 0.25)" : "rgba(0, 0, 0, 0.35)"}
                 value={newPassword}
                 onChangeText={setNewPassword}
               />
@@ -1192,7 +1267,7 @@ export default function DashboardScreen({ navigation, route }) {
                 style={sidebarStyles.modalTextInputField}
                 secureTextEntry
                 placeholder="Confirm your new password"
-                placeholderTextColor="rgba(255, 255, 255, 0.25)"
+                placeholderTextColor={darkModeEnabled ? "rgba(255, 255, 255, 0.25)" : "rgba(0, 0, 0, 0.35)"}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
               />
@@ -1220,254 +1295,301 @@ export default function DashboardScreen({ navigation, route }) {
       </Modal>
 
     </SafeAreaView>
+
+    {/* Sidebar Drawer Overlay */}
+    {isSidebarVisible && (
+      <View style={sidebarStyles.overlayContainer}>
+        {/* Backdrop */}
+        <Animated.View style={[sidebarStyles.backdrop, { opacity: backdropOpacity }]}>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={toggleSidebar}
+          />
+        </Animated.View>
+        {/* Drawer Panel */}
+        <Animated.View style={[sidebarStyles.drawerPanel, { transform: [{ translateX: sidebarSlide }] }]}>
+          {Platform.OS === "ios" ? (
+            <BlurView intensity={100} tint={darkModeEnabled ? "dark" : "light"} style={sidebarStyles.drawerBlur}>
+              {renderDrawerContent()}
+            </BlurView>
+          ) : (
+            <View style={[sidebarStyles.drawerBlur, { backgroundColor: darkModeEnabled ? "rgba(17, 18, 16, 0.98)" : "rgba(244, 245, 247, 0.98)" }]}>
+              {renderDrawerContent()}
+            </View>
+          )}
+        </Animated.View>
+      </View>
+    )}
+
+  </View>
   );
 }
 
-const sidebarStyles = StyleSheet.create({
-  overlayContainer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 999,
-    flexDirection: "row",
-  },
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  drawerPanel: {
-    width: 280,
-    height: "100%",
-    backgroundColor: "rgba(17, 18, 16, 0.95)",
-    borderLeftWidth: 1,
-    borderLeftColor: "rgba(255, 255, 255, 0.08)",
-  },
-  drawerBlur: {
-    flex: 1,
-    paddingTop: Platform.OS === "ios" ? 60 : 40,
-    paddingHorizontal: 20,
-  },
-  profileHeader: {
-    alignItems: "center",
-    paddingBottom: 24,
-  },
-  avatarWrapper: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: "#9D4EDD",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  avatarText: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  profileName: {
-    fontSize: 15,
-    color: "#FFFFFF",
-    fontFamily: "DMSerifDisplay-Regular",
-    textAlign: "center",
-  },
-  profileEmail: {
-    fontSize: 11,
-    color: "#8A90A8",
-    fontFamily: "DMSerifDisplay-Regular",
-    marginTop: 2,
-    textAlign: "center",
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    marginBottom: 12,
-  },
-  menuScrollView: {
-    paddingBottom: 40,
-  },
-  menuSectionLabel: {
-    fontSize: 9,
-    color: "rgba(255, 255, 255, 0.3)",
-    fontFamily: "DMSerifDisplay-Regular",
-    letterSpacing: 1.2,
-    marginTop: 18,
-    marginBottom: 8,
-  },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  menuIcon: {
-    marginRight: 12,
-    width: 18,
-    textAlign: "center",
-  },
-  menuItemText: {
-    fontSize: 13,
-    color: "#FFFFFF",
-    fontFamily: "DMSerifDisplay-Regular",
-  },
-  menuDivider: {
-    height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    marginVertical: 12,
-  },
-  prefItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  toggleContainer: {
-    width: 32,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    justifyContent: "center",
-    paddingHorizontal: 2,
-  },
-  toggleActive: {
-    backgroundColor: "#9D4EDD",
-  },
-  toggleDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: "#8A90A8",
-  },
-  toggleDotActive: {
-    backgroundColor: "#FFFFFF",
-    alignSelf: "flex-end",
-  },
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-  },
-  modalContent: {
-    width: "88%",
-    borderRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    backgroundColor: "rgba(26, 28, 25, 0.9)",
-  },
-  modalTitle: {
-    fontSize: 18,
-    color: "#FFFFFF",
-    fontFamily: "DMSerifDisplay-Regular",
-    textAlign: "center",
-    marginBottom: 6,
-  },
-  modalSubtitle: {
-    fontSize: 12,
-    color: "#8A90A8",
-    fontFamily: "DMSerifDisplay-Regular",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  fieldLabel: {
-    fontSize: 9,
-    color: "rgba(255, 255, 255, 0.4)",
-    fontFamily: "DMSerifDisplay-Regular",
-    letterSpacing: 0.8,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  modalInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(17, 18, 16, 0.68)",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    height: 46,
-    marginBottom: 20,
-  },
-  modalCurrency: {
-    fontSize: 15,
-    marginRight: 6,
-    color: "#8A90A8",
-    fontFamily: "DMSerifDisplay-Regular",
-  },
-  modalInput: {
-    flex: 1,
-    height: "100%",
-    fontSize: 14,
-    color: "#FFFFFF",
-    fontFamily: "DMSerifDisplay-Regular",
-  },
-  modalTextInputField: {
-    flex: 1,
-    height: "100%",
-    fontSize: 13,
-    color: "#FFFFFF",
-    fontFamily: "DMSerifDisplay-Regular",
-  },
-  frequencyRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 24,
-  },
-  frequencyButton: {
-    flex: 1,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(17, 18, 16, 0.68)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginHorizontal: 4,
-  },
-  frequencyButtonActive: {
-    backgroundColor: "rgba(157, 78, 221, 0.15)",
-    borderColor: "#9D4EDD",
-  },
-  frequencyText: {
-    fontSize: 13,
-    color: "#8A90A8",
-    fontFamily: "DMSerifDisplay-Regular",
-  },
-  frequencyTextActive: {
-    color: "#9D4EDD",
-    fontWeight: "bold",
-  },
-  modalButtonsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  modalCancelButton: {
-    flex: 1,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "rgba(17, 18, 16, 0.68)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 8,
-  },
-  modalCancelButtonText: {
-    color: "#8A90A8",
-    fontSize: 13,
-    fontFamily: "DMSerifDisplay-Regular",
-  },
-  modalSaveButton: {
-    flex: 1,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "#9D4EDD",
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 8,
-  },
-  modalSaveButtonText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontFamily: "DMSerifDisplay-Regular",
-  },
-});
+function getSidebarStyles(isDarkMode) {
+  const colors = {
+    bg: isDarkMode ? "rgba(17, 18, 16, 0.95)" : "rgba(244, 245, 247, 0.95)",
+    border: isDarkMode ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)",
+    textPrimary: isDarkMode ? "#FFFFFF" : "#111210",
+    textSecondary: isDarkMode ? "#8A90A8" : "#5A607F",
+    divider: isDarkMode ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.06)",
+    sectionLabel: isDarkMode ? "rgba(255, 255, 255, 0.3)" : "rgba(0, 0, 0, 0.4)",
+    toggleBg: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)",
+    modalContentBg: isDarkMode ? "rgba(26, 28, 25, 0.9)" : "rgba(255, 255, 255, 0.95)",
+    inputBg: isDarkMode ? "rgba(17, 18, 16, 0.68)" : "#FFFFFF",
+    cancelBtnBg: isDarkMode ? "rgba(17, 18, 16, 0.68)" : "#E5E7EB",
+  };
+
+  return StyleSheet.create({
+    overlayContainer: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 999,
+    },
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+    },
+    drawerPanel: {
+      position: "absolute",
+      right: 0,
+      top: 0,
+      bottom: 0,
+      width: 280,
+      backgroundColor: colors.bg,
+      borderLeftWidth: 1,
+      borderLeftColor: colors.border,
+    },
+    drawerBlur: {
+      flex: 1,
+    },
+    drawerContainer: {
+      flex: 1,
+      paddingHorizontal: 20,
+    },
+    profileHeader: {
+      alignItems: "center",
+      paddingBottom: 24,
+    },
+    avatarWrapper: {
+      width: 54,
+      height: 54,
+      borderRadius: 27,
+      backgroundColor: "#9D4EDD",
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    avatarText: {
+      color: "#FFFFFF",
+      fontSize: 20,
+      fontWeight: "bold",
+    },
+    profileName: {
+      fontSize: 15,
+      color: colors.textPrimary,
+      fontFamily: "DMSerifDisplay-Regular",
+      textAlign: "center",
+    },
+    profileEmail: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      fontFamily: "DMSerifDisplay-Regular",
+      marginTop: 2,
+      textAlign: "center",
+    },
+    divider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginBottom: 12,
+    },
+    menuScrollView: {
+      paddingBottom: 40,
+    },
+    menuSectionLabel: {
+      fontSize: 9,
+      color: colors.sectionLabel,
+      fontFamily: "DMSerifDisplay-Regular",
+      letterSpacing: 1.2,
+      marginTop: 18,
+      marginBottom: 8,
+    },
+    menuItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 12,
+    },
+    menuIcon: {
+      marginRight: 12,
+      width: 18,
+      textAlign: "center",
+    },
+    menuItemText: {
+      fontSize: 13,
+      color: colors.textPrimary,
+      fontFamily: "DMSerifDisplay-Regular",
+    },
+    menuDivider: {
+      height: 1,
+      backgroundColor: colors.divider,
+      marginVertical: 12,
+    },
+    prefItem: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 12,
+    },
+    toggleContainer: {
+      width: 32,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: colors.toggleBg,
+      justifyContent: "center",
+      paddingHorizontal: 2,
+    },
+    toggleActive: {
+      backgroundColor: "#9D4EDD",
+    },
+    toggleDot: {
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+      backgroundColor: colors.textSecondary,
+    },
+    toggleDotActive: {
+      backgroundColor: "#FFFFFF",
+      alignSelf: "flex-end",
+    },
+    modalBackdrop: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.6)",
+    },
+    modalContent: {
+      width: "88%",
+      borderRadius: 24,
+      padding: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.modalContentBg,
+    },
+    modalTitle: {
+      fontSize: 18,
+      color: colors.textPrimary,
+      fontFamily: "DMSerifDisplay-Regular",
+      textAlign: "center",
+      marginBottom: 6,
+    },
+    modalSubtitle: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontFamily: "DMSerifDisplay-Regular",
+      textAlign: "center",
+      marginBottom: 20,
+    },
+    fieldLabel: {
+      fontSize: 9,
+      color: colors.textSecondary,
+      fontFamily: "DMSerifDisplay-Regular",
+      letterSpacing: 0.8,
+      marginBottom: 8,
+      marginLeft: 4,
+    },
+    modalInputRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.inputBg,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      height: 46,
+      marginBottom: 20,
+    },
+    modalCurrency: {
+      fontSize: 15,
+      marginRight: 6,
+      color: colors.textSecondary,
+      fontFamily: "DMSerifDisplay-Regular",
+    },
+    modalInput: {
+      flex: 1,
+      height: "100%",
+      fontSize: 14,
+      color: colors.textPrimary,
+      fontFamily: "DMSerifDisplay-Regular",
+    },
+    modalTextInputField: {
+      flex: 1,
+      height: "100%",
+      fontSize: 13,
+      color: colors.textPrimary,
+      fontFamily: "DMSerifDisplay-Regular",
+    },
+    frequencyRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 24,
+    },
+    frequencyButton: {
+      flex: 1,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      justifyContent: "center",
+      alignItems: "center",
+      marginHorizontal: 4,
+    },
+    frequencyButtonActive: {
+      backgroundColor: "rgba(157, 78, 221, 0.15)",
+      borderColor: "#9D4EDD",
+    },
+    frequencyText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontFamily: "DMSerifDisplay-Regular",
+    },
+    frequencyTextActive: {
+      color: "#9D4EDD",
+      fontWeight: "bold",
+    },
+    modalButtonsRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginTop: 10,
+    },
+    modalCancelButton: {
+      flex: 1,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.cancelBtnBg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 8,
+    },
+    modalCancelButtonText: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontFamily: "DMSerifDisplay-Regular",
+    },
+    modalSaveButton: {
+      flex: 1,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: "#9D4EDD",
+      justifyContent: "center",
+      alignItems: "center",
+      marginLeft: 8,
+    },
+    modalSaveButtonText: {
+      color: "#FFFFFF",
+      fontSize: 13,
+      fontFamily: "DMSerifDisplay-Regular",
+    },
+  });
+}

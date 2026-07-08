@@ -3,6 +3,7 @@ import { StyleSheet, Platform } from "react-native";
 export const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
+    backgroundColor: "#111210",
   },
 
   headerWrapper: {
@@ -11,6 +12,13 @@ export const styles = StyleSheet.create({
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  scrollContainer: {
+    flexGrow: 1,
+    backgroundColor: "transparent",
+    justifyContent: "center",
+    paddingVertical: 16,
   },
 
   buttonScaleWrapper: {
@@ -41,23 +49,20 @@ export const styles = StyleSheet.create({
     resizeMode: "contain",
   },
 
-  /* Bottom White Card */
+  /* Bottom Card */
   card: {
-    backgroundColor: "rgba(255, 255, 255, 0.93)",
-    borderTopLeftRadius: 36,
-    borderTopRightRadius: 36,
-    paddingHorizontal: 24,
-    width: "100%",
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: -4 },
-    elevation: 5,
+    backgroundColor: "rgba(17, 18, 16, 0.68)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    overflow: "hidden",
+    marginHorizontal: 16,
   },
 
   title: {
     fontSize: 24,
-    color: "#111827",
+    color: "#FFFFFF",
     textAlign: "center",
     fontFamily: "DMSerifDisplay-Regular",
     marginBottom: 8,
@@ -66,7 +71,7 @@ export const styles = StyleSheet.create({
 
   subtitle: {
     fontSize: 14,
-    color: "#6B7280",
+    color: "#8A90A8",
     textAlign: "center",
     fontFamily: "DMSerifDisplay-Regular",
     lineHeight: 20,
@@ -76,18 +81,12 @@ export const styles = StyleSheet.create({
 
   /* Unified Premium Money Profile Summary Widget */
   profileCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "rgba(255, 255, 255, 0.02)",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: "rgba(255, 255, 255, 0.06)",
     padding: 16,
     marginBottom: 24,
-    // Smooth elevation drop shadow
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
   },
 
   profileRow: {
@@ -102,28 +101,28 @@ export const styles = StyleSheet.create({
 
   profileLabel: {
     fontSize: 10,
-    color: "#9CA3AF",
+    color: "#8A90A8",
     fontFamily: "DMSerifDisplay-Regular",
     letterSpacing: 0.5,
   },
 
   profileSubLabel: {
     fontSize: 14,
-    color: "#1F2937",
+    color: "#FFFFFF",
     fontFamily: "DMSerifDisplay-Regular",
     marginTop: 1,
   },
 
   profileValue: {
     fontSize: 16,
-    color: "#111827",
+    color: "#FFFFFF",
     fontFamily: "DMSerifDisplay-Regular",
     textAlign: "right",
   },
 
   profileValueSubtitle: {
     fontSize: 11,
-    color: "#6B7280",
+    color: "#8A90A8",
     fontFamily: "DMSerifDisplay-Regular",
     marginTop: 1,
     textAlign: "right",
@@ -131,12 +130,12 @@ export const styles = StyleSheet.create({
 
   profileDivider: {
     height: 1,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
     marginVertical: 12,
   },
 
   statusBadge: {
-    backgroundColor: "#F3F0FF",
+    backgroundColor: "rgba(157, 78, 221, 0.15)",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -144,7 +143,7 @@ export const styles = StyleSheet.create({
 
   statusBadgeText: {
     fontSize: 10,
-    color: "#7B2CBF",
+    color: "#9D4EDD",
     fontFamily: "DMSerifDisplay-Regular",
     letterSpacing: 0.5,
   },
@@ -154,32 +153,38 @@ export const styles = StyleSheet.create({
     width: "100%",
     height: 52,
     borderRadius: 26,
-    shadowColor: "#3C096C",
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
   },
 
-  buttonGradient: {
+  buttonSolid: {
     flex: 1,
     borderRadius: 26,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(157, 78, 221, 0.65)",
+    backgroundColor: "rgba(157, 78, 221, 0.28)",
   },
 
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
+    fontWeight: "700",
     fontFamily: "DMSerifDisplay-Regular",
     letterSpacing: 0.5,
   },
 
   backButtonContainer: {
     position: "absolute",
-    left: 14,
+    left: 16,
     zIndex: 10,
     padding: 10,
-    backgroundColor: "transparent",
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.06)",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    width: 40,
+    height: 40,
   },
 });

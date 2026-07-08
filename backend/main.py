@@ -1,10 +1,10 @@
 # main.py
 from flask import Flask
 from init_db import initialize_database
-from signup import signup_bp
-from login import login_bp
-from onboarding import onboarding_bp
-from transactions import transactions_bp
+from services.signup import signup_bp
+from services.login import login_bp
+from services.onboarding import onboarding_bp
+from services.transactions import transactions_bp
 
 # Ensure database and tables exist before starting the app
 initialize_database()

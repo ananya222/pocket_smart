@@ -1,4 +1,5 @@
 // GoalsScreen.js
+import { API_BASE_URL } from "../config";
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -105,7 +106,7 @@ export default function GoalsScreen({ navigation, route }) {
     try {
       const userId = user.id || user.userId || route.params?.user?.id;
       if (!userId) return;
-      const response = await fetch(`http://192.168.1.4:5000/get_goals?userId=${userId}`);
+      const response = await fetch(`${API_BASE_URL}/get_goals?userId=${userId}`);
       const data = await response.json();
       if (response.ok && data.goals) {
         const mapped = data.goals.map((g) => {
@@ -153,7 +154,7 @@ export default function GoalsScreen({ navigation, route }) {
             try {
               const userId = user.id || user.userId || route.params?.user?.id;
               if (!userId) return;
-              const response = await fetch("http://192.168.1.4:5000/delete_goal", {
+              const response = await fetch(`${API_BASE_URL}/delete_goal`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ userId, goalId })
@@ -177,36 +178,40 @@ export default function GoalsScreen({ navigation, route }) {
   const ongoingGoals = dbGoals.filter(g => g.progressAmount < g.target);
   const completedGoals = dbGoals.filter(g => g.progressAmount >= g.target);
 
-  const renderGoalIcon = (iconType, image) => {
-    if (image) {
-      return (
-        <Image 
-          source={{ uri: image }} 
-          style={{ width: 32, height: 32, borderRadius: 8, resizeMode: "cover" }} 
-        />
-      );
+  const renderGoalIcon = (goalName) => {
+    if (!goalName) return <Feather name="target" size={18} color={accentColor} />;
+    const q = goalName.toLowerCase().trim();
+    if (q.includes("shoe") || q.includes("nike") || q.includes("adidas") || q.includes("sneaker") || q.includes("puma") || q.includes("jordan") || q.includes("footwear")) {
+      return <MaterialCommunityIcons name="shoe-sneaker" size={20} color={accentColor} />;
     }
-    if (iconType === "headphones") {
-      return (
-        <Image 
-          source={require("../assets/images/savings_headphones.png")} 
-          style={{ width: 32, height: 32, borderRadius: 8, resizeMode: "contain" }} 
-        />
-      );
+    if (q.includes("football") || q.includes("soccer") || q.includes("ball") || q.includes("cricket") || q.includes("bat") || q.includes("sport") || q.includes("gym") || q.includes("fit")) {
+      return <Feather name="award" size={20} color={accentColor} />;
     }
-    if (iconType === "gamepad") {
-      return (
-        <MaterialCommunityIcons name="gamepad-variant" size={20} color={accentColor} />
-      );
+    if (q.includes("headphones") || q.includes("sony") || q.includes("music") || q.includes("earphone") || q.includes("airpods") || q.includes("headset") || q.includes("song")) {
+      return <Feather name="headphones" size={20} color={accentColor} />;
     }
-    if (iconType === "bicycle") {
-      return (
-        <MaterialCommunityIcons name="bicycle" size={20} color={accentColor} />
-      );
+    if (q.includes("controller") || q.includes("gamepad") || q.includes("ps5") || q.includes("playstation") || q.includes("xbox") || q.includes("nintendo") || q.includes("gaming") || q.includes("console")) {
+      return <MaterialCommunityIcons name="gamepad-variant" size={20} color={accentColor} />;
     }
-    return (
-      <Feather name="target" size={18} color={accentColor} />
-    );
+    if (q.includes("bike") || q.includes("bicycle") || q.includes("cycle")) {
+      return <MaterialCommunityIcons name="bicycle" size={20} color={accentColor} />;
+    }
+    if (q.includes("laptop") || q.includes("macbook") || q.includes("computer") || q.includes("pc") || q.includes("monitor") || q.includes("tech") || q.includes("device") || q.includes("electronics")) {
+      return <Feather name="laptop" size={20} color={accentColor} />;
+    }
+    if (q.includes("watch") || q.includes("smartwatch") || q.includes("rolex") || q.includes("accessory")) {
+      return <Feather name="watch" size={20} color={accentColor} />;
+    }
+    if (q.includes("book") || q.includes("novel") || q.includes("read") || q.includes("study") || q.includes("course")) {
+      return <Feather name="book-open" size={20} color={accentColor} />;
+    }
+    if (q.includes("car") || q.includes("drive") || q.includes("vehicle") || q.includes("tesla")) {
+      return <Ionicons name="car-sport-outline" size={20} color={accentColor} />;
+    }
+    if (q.includes("travel") || q.includes("trip") || q.includes("flight") || q.includes("vacation") || q.includes("hotel")) {
+      return <Ionicons name="airplane-outline" size={20} color={accentColor} />;
+    }
+    return <Feather name="target" size={18} color={accentColor} />;
   };
 
   // Helper to check if text is a URL
@@ -319,7 +324,7 @@ export default function GoalsScreen({ navigation, route }) {
   // Derive dynamic illustration logic
   const getSelectedIcon = () => {
     const q = selectedGoalName.toLowerCase();
-    if (q.includes("headphones") || q.includes("sony") || q.includes("earphone") || q.includes("headset")) {
+    if (q.includes("headphones") || q.includes("sony") || q.includes("earphone") || q.includes("headset") || q.includes("music")) {
       return "headphones";
     }
     if (q.includes("controller") || q.includes("ps5") || q.includes("playstation") || q.includes("game") || q.includes("gamepad") || q.includes("xbox")) {
@@ -328,21 +333,33 @@ export default function GoalsScreen({ navigation, route }) {
     if (q.includes("bicycle") || q.includes("bike") || q.includes("cycle")) {
       return "bicycle";
     }
+    if (q.includes("shoe") || q.includes("nike") || q.includes("adidas") || q.includes("sneaker") || q.includes("puma") || q.includes("jordan")) {
+      return "shoe";
+    }
+    if (q.includes("football") || q.includes("soccer") || q.includes("ball") || q.includes("cricket") || q.includes("bat") || q.includes("sport") || q.includes("gym") || q.includes("fit")) {
+      return "award";
+    }
+    if (q.includes("laptop") || q.includes("macbook") || q.includes("computer") || q.includes("pc") || q.includes("monitor") || q.includes("tech")) {
+      return "laptop";
+    }
+    if (q.includes("watch") || q.includes("smartwatch") || q.includes("rolex")) {
+      return "watch";
+    }
+    if (q.includes("book") || q.includes("novel") || q.includes("read") || q.includes("study")) {
+      return "book";
+    }
+    if (q.includes("car") || q.includes("drive") || q.includes("vehicle")) {
+      return "car";
+    }
+    if (q.includes("travel") || q.includes("trip") || q.includes("flight") || q.includes("vacation")) {
+      return "airplane";
+    }
     return "default";
   };
 
   const selectedIcon = getSelectedIcon();
 
   const renderGoalIllustration = () => {
-    if (selectedGoalImage) {
-      return (
-        <Image
-          source={{ uri: selectedGoalImage }}
-          style={styles.previewImage}
-          resizeMode="cover"
-        />
-      );
-    }
     if (selectedIcon === "headphones") {
       return (
         <Image
@@ -353,11 +370,39 @@ export default function GoalsScreen({ navigation, route }) {
       );
     } else if (selectedIcon === "gamepad") {
       return (
-        <Ionicons name="game-controller" size={32} color={accentColor} />
+        <MaterialCommunityIcons name="gamepad-variant" size={32} color={accentColor} />
       );
     } else if (selectedIcon === "bicycle") {
       return (
         <MaterialCommunityIcons name="bicycle" size={32} color={accentColor} />
+      );
+    } else if (selectedIcon === "shoe") {
+      return (
+        <MaterialCommunityIcons name="shoe-sneaker" size={32} color={accentColor} />
+      );
+    } else if (selectedIcon === "award") {
+      return (
+        <Feather name="award" size={32} color={accentColor} />
+      );
+    } else if (selectedIcon === "laptop") {
+      return (
+        <Feather name="laptop" size={32} color={accentColor} />
+      );
+    } else if (selectedIcon === "watch") {
+      return (
+        <Feather name="watch" size={32} color={accentColor} />
+      );
+    } else if (selectedIcon === "book") {
+      return (
+        <Feather name="book-open" size={32} color={accentColor} />
+      );
+    } else if (selectedIcon === "car") {
+      return (
+        <Ionicons name="car-sport-outline" size={32} color={accentColor} />
+      );
+    } else if (selectedIcon === "airplane") {
+      return (
+        <Ionicons name="airplane-outline" size={32} color={accentColor} />
       );
     }
     return (
@@ -415,7 +460,7 @@ export default function GoalsScreen({ navigation, route }) {
               <BlurView key={g.id} intensity={100} tint="dark" style={styles.goalCard}>
                 <View style={styles.goalMainRow}>
                   <View style={styles.goalIconWrapper}>
-                    {renderGoalIcon(g.iconType, g.image)}
+                    {renderGoalIcon(g.name)}
                   </View>
                   <View style={styles.goalInfoContainer}>
                     <Text style={styles.goalTitle}>{g.name}</Text>
@@ -465,7 +510,7 @@ export default function GoalsScreen({ navigation, route }) {
               <BlurView key={g.id} intensity={100} tint="dark" style={[styles.goalCard, { opacity: 0.8 }]}>
                 <View style={styles.goalMainRow}>
                   <View style={styles.goalIconWrapper}>
-                    {renderGoalIcon(g.iconType, g.image)}
+                    {renderGoalIcon(g.name)}
                   </View>
                   <View style={styles.goalInfoContainer}>
                     <Text style={styles.goalTitle}>{g.name}</Text>

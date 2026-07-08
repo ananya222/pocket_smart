@@ -5,10 +5,10 @@ import {
   View, Text, TextInput, TouchableOpacity, Alert, ScrollView,
   KeyboardAvoidingView, Platform, StatusBar, useWindowDimensions, Animated
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import { Feather } from "@expo/vector-icons";
 import BackgroundGrid from "../components/BackgroundGrid";
 import { styles } from "../styles/OtpScreen.styles";
-import { Feather } from "@expo/vector-icons";
 
 export default function OtpScreen({ navigation }) {
   const { width, height } = useWindowDimensions();
@@ -22,15 +22,6 @@ export default function OtpScreen({ navigation }) {
   }), [verifyScale]);
 
   const STATUS_BAR_HEIGHT = Platform.OS === "ios" ? 47 : (StatusBar.currentHeight || 24);
-  const headerHeight = Math.max(height * 0.40, 240);
-
-  const headerWrapperStyle = React.useMemo(() => [
-    styles.headerWrapper, { height: headerHeight }
-  ], [headerHeight]);
-
-  const scrollContainerStyle = React.useMemo(() => [
-    styles.scrollContainer, { paddingBottom: Platform.OS === "ios" ? 40 : 80 }
-  ], []);
 
   const handlePressIn = (scaleVar) => {
     Animated.spring(scaleVar, { toValue: 0.96, useNativeDriver: true, speed: 40, bounciness: 4 }).start();
@@ -57,49 +48,45 @@ export default function OtpScreen({ navigation }) {
   return (
     <View style={styles.mainContainer}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <BackgroundGrid type="otp" />
+
       <KeyboardAvoidingView
-        style={styles.mainContainer}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        style={{ flex: 1, backgroundColor: "transparent" }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          style={styles.mainContainer}
-          contentContainerStyle={scrollContainerStyle}
+          style={{ flex: 1, backgroundColor: "transparent" }}
+          contentContainerStyle={[styles.scrollContainer, { paddingTop: STATUS_BAR_HEIGHT + 16 }]}
           showsVerticalScrollIndicator={false}
           bounces={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Top Header Section */}
-          <LinearGradient
-            colors={["#9D4EDD", "#7B2CBF"]}
-            start={{ x: 1, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={headerWrapperStyle}
-          >
-            <BackgroundGrid type="auth" />
-            <TouchableOpacity
-              onPress={() => navigation.navigate("Signup")}
-              style={[styles.backButtonContainer, { top: STATUS_BAR_HEIGHT + 10 }]}
+          {/* Header Row with Back Button */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", width: "100%", height: 40 }}>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate("Signup")} 
+              style={styles.backButtonContainer}
+              activeOpacity={0.7}
             >
-              <Feather name="arrow-left" size={22} color="#FFFFFF" />
+              <Feather name="arrow-left" size={20} color="#FFFFFF" />
             </TouchableOpacity>
-            <View style={[styles.headerTextContainer, { paddingTop: STATUS_BAR_HEIGHT + 80 }]}>
-              <Text style={styles.headerTitle} adjustsFontSizeToFit numberOfLines={2}>
-                Verification Code
-              </Text>
-              <Text style={styles.headerDescription}>
-                We have sent a security verification code to your registered email address.
-              </Text>
-            </View>
-          </LinearGradient>
+          </View>
+
+          {/* Header text */}
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Verification Code</Text>
+            <Text style={styles.headerDescription}>
+              We have sent a security verification code to your registered email address.
+            </Text>
+          </View>
 
           {/* Form Card Section */}
-          <View style={styles.card}>
+          <BlurView intensity={100} tint="dark" style={styles.card}>
             <View style={[styles.inputContainer, isFocused && styles.inputContainerFocused]}>
-              <Feather name="shield" size={18} color="#7B2CBF" style={styles.icon} />
+              <Feather name="shield" size={18} color={isFocused ? "#9D4EDD" : "#8A90A8"} style={styles.icon} />
               <TextInput
                 placeholder="0000"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#6C6F8F"
                 keyboardType="numeric"
                 maxLength={4}
                 value={otp}
@@ -118,23 +105,18 @@ export default function OtpScreen({ navigation }) {
               style={styles.buttonContainer}
             >
               <Animated.View style={[styles.buttonScaleWrapper, verifyScaleStyle]}>
-                <LinearGradient
-                  colors={["#9D4EDD", "#7B2CBF"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.buttonGradient}
-                >
+                <View style={styles.buttonSolid}>
                   <Text style={styles.buttonText}>Verify OTP</Text>
-                </LinearGradient>
+                </View>
               </Animated.View>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleResend} style={styles.resendContainer}>
               <Text style={styles.resendTextSub}>
-                Didn't receive the code? <Text style={styles.resendTextHighlight}>Resend Code   </Text>
+                Didn't receive the code? <Text style={styles.resendTextHighlight}>Resend Code</Text>
               </Text>
             </TouchableOpacity>
-          </View>
+          </BlurView>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

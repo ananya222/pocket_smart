@@ -101,7 +101,7 @@ export const getStyles = (isSmallDevice) => StyleSheet.create({
   sectionLabel: {
     fontSize: 10,
     color: "#8A90A8",
-    fontFamily: "Geist-SemiBold",
+    fontFamily: "DMSerifDisplay-Regular",
     letterSpacing: 0.8,
     textTransform: "uppercase",
     marginTop: 10,
@@ -137,39 +137,30 @@ export const getStyles = (isSmallDevice) => StyleSheet.create({
   categoryChipLabel: {
     fontSize: 12,
     color: "#8A90A8",
-    fontFamily: "Geist-Regular",
+    fontFamily: "DMSerifDisplay-Regular",
   },
 
   categoryChipLabelActive: {
     color: "#FFFFFF",
-    fontFamily: "Geist-SemiBold",
+    fontFamily: "DMSerifDisplay-Regular",
   },
 
   /* Minimalist Add Button */
   addButton: {
     height: 48,
-    borderRadius: 14,
-    backgroundColor: "#9D4EDD",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(157, 78, 221, 0.65)",
+    backgroundColor: "rgba(157, 78, 221, 0.28)",
     justifyContent: "center",
     alignItems: "center",
     marginTop: 10,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#9D4EDD",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
   },
 
   addButtonText: {
     fontSize: 14,
     color: "#FFFFFF",
-    fontFamily: "Geist-SemiBold",
+    fontFamily: "DMSerifDisplay-Regular",
     letterSpacing: 0.5,
   },
 

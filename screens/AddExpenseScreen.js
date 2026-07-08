@@ -18,6 +18,8 @@ import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { getStyles } from "../styles/AddExpenseScreen.styles";
 import BackgroundGrid from "../components/BackgroundGrid";
+// Force Metro Cache Invalidation to reload stylesheets: 2026-06-25T10:35:57
+
 
 const CATEGORIES = [
   { name: "Food & Drinks", icon: "coffee" },
@@ -92,7 +94,7 @@ export default function AddExpenseScreen({ navigation, route }) {
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      navigation.navigate("ExpenseReflection", {
+      navigation.navigate("Impact", {
         user,
         expenseAmount,
         merchant: merchant.trim(),
@@ -238,7 +240,7 @@ export default function AddExpenseScreen({ navigation, route }) {
 
           {/* Submit Button */}
           {isLoading ? (
-            <View style={[styles.addButton, { backgroundColor: "rgba(157, 78, 221, 0.4)" }]}>
+            <View style={[styles.addButton, { opacity: 0.6 }]}>
               <ActivityIndicator size="small" color="#FFFFFF" />
             </View>
           ) : (

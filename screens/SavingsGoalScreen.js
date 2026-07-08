@@ -1,5 +1,5 @@
 // SavingsGoalScreen.js
-
+import { API_BASE_URL } from "../config";
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -14,7 +14,6 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import BackgroundGrid from "../components/BackgroundGrid";
 import { styles } from "../styles/SavingsGoalScreen.styles";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -39,6 +38,7 @@ export default function SavingsGoalScreen({ navigation, route }) {
   const [isAmountFocused, setIsAmountFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [goalImage, setGoalImage] = useState(null);
+  const [priority, setPriority] = useState(3);
 
   // ── Animation refs ───────────────────────────────────────────────────────────
   const createGoalScale = useRef(new Animated.Value(1)).current;
@@ -133,7 +133,7 @@ export default function SavingsGoalScreen({ navigation, route }) {
       }
       setIsLoading(true);
       try {
-        const response = await fetch("http://192.168.1.4:5000/add_goal", {
+        const response = await fetch(`${API_BASE_URL}/add_goal`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -142,19 +142,13 @@ export default function SavingsGoalScreen({ navigation, route }) {
             targetAmount: targetAmount,
             timeToReach: timeToReach || 6,
             goalImage: goalImage,
-            progressAmount: 0
+            progressAmount: 0,
+            priority: priority
           })
         });
         const data = await response.json();
         if (response.ok) {
-          Alert.alert("Success", "New savings goal added successfully!", [
-            {
-              text: "OK",
-              onPress: () => {
-                navigation.navigate("Dashboard", { user: routeParams.user });
-              }
-            }
-          ]);
+          navigation.navigate("Dashboard", { user: routeParams.user });
         } else {
           Alert.alert("Failed", data.error || "Could not add goal.");
         }
@@ -173,6 +167,7 @@ export default function SavingsGoalScreen({ navigation, route }) {
         targetAmount,
         timeToReach,
         goalImage,
+        priority: priority
       });
     }
   };
@@ -183,27 +178,32 @@ export default function SavingsGoalScreen({ navigation, route }) {
 
   const getSelectedIcon = () => {
     const q = searchQuery.toLowerCase();
-    if (q.includes("headphones") || q.includes("sony") || q.includes("earphone") || q.includes("headset"))
+    if (q.includes("headphones") || q.includes("sony") || q.includes("earphone") || q.includes("headset") || q.includes("music"))
       return "headphones";
     if (q.includes("controller") || q.includes("ps5") || q.includes("playstation") || q.includes("game") || q.includes("gamepad") || q.includes("xbox"))
       return "gamepad";
     if (q.includes("bicycle") || q.includes("bike") || q.includes("cycle"))
       return "bicycle";
+    if (q.includes("shoe") || q.includes("nike") || q.includes("adidas") || q.includes("sneaker") || q.includes("puma") || q.includes("jordan"))
+      return "shoe";
+    if (q.includes("football") || q.includes("soccer") || q.includes("ball") || q.includes("cricket") || q.includes("bat") || q.includes("sport") || q.includes("gym") || q.includes("fit"))
+      return "award";
+    if (q.includes("laptop") || q.includes("macbook") || q.includes("computer") || q.includes("pc") || q.includes("monitor") || q.includes("tech"))
+      return "laptop";
+    if (q.includes("watch") || q.includes("smartwatch") || q.includes("rolex"))
+      return "watch";
+    if (q.includes("book") || q.includes("novel") || q.includes("read") || q.includes("study"))
+      return "book";
+    if (q.includes("car") || q.includes("drive") || q.includes("vehicle"))
+      return "car";
+    if (q.includes("travel") || q.includes("trip") || q.includes("flight") || q.includes("vacation"))
+      return "airplane";
     return "default";
   };
 
   const selectedIcon = getSelectedIcon();
 
   const renderGoalIllustration = (size) => {
-    if (goalImage) {
-      return (
-        <Image
-          source={{ uri: goalImage }}
-          style={goalIllustrationStyle}
-          resizeMode="contain"
-        />
-      );
-    }
     if (selectedIcon === "headphones") {
       return (
         <Image
@@ -218,6 +218,27 @@ export default function SavingsGoalScreen({ navigation, route }) {
     }
     if (selectedIcon === "bicycle") {
       return <Ionicons name="bicycle-outline" size={size * 0.55} color="#9D4EDD" />;
+    }
+    if (selectedIcon === "shoe") {
+      return <MaterialCommunityIcons name="shoe-sneaker" size={size * 0.55} color="#9D4EDD" />;
+    }
+    if (selectedIcon === "award") {
+      return <Ionicons name="trophy-outline" size={size * 0.55} color="#9D4EDD" />;
+    }
+    if (selectedIcon === "laptop") {
+      return <Ionicons name="laptop-outline" size={size * 0.55} color="#9D4EDD" />;
+    }
+    if (selectedIcon === "watch") {
+      return <Ionicons name="watch-outline" size={size * 0.55} color="#9D4EDD" />;
+    }
+    if (selectedIcon === "book") {
+      return <Ionicons name="book-outline" size={size * 0.55} color="#9D4EDD" />;
+    }
+    if (selectedIcon === "car") {
+      return <Ionicons name="car-sport-outline" size={size * 0.55} color="#9D4EDD" />;
+    }
+    if (selectedIcon === "airplane") {
+      return <Ionicons name="airplane-outline" size={size * 0.55} color="#9D4EDD" />;
     }
     return <Ionicons name="gift-outline" size={size * 0.55} color="#9D4EDD" />;
   };
@@ -254,7 +275,7 @@ export default function SavingsGoalScreen({ navigation, route }) {
           },
         ]}
       >
-        <View style={{ flex: 1, paddingBottom: Platform.OS === "ios" ? 10 : 16 }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: Platform.OS === "ios" ? 10 : 16 }} showsVerticalScrollIndicator={false}>
 
           {/* ── Goal Name Input ─────────────────────────── */}
           <Text style={styles.sectionTitle}>Goal Name:</Text>
@@ -312,6 +333,59 @@ export default function SavingsGoalScreen({ navigation, route }) {
             </View>
           )}
 
+          {/* ── Goal Priority Selection ────────────────────── */}
+          <Text style={styles.sectionTitle}>Goal Priority:</Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: metrics.marginSpacing }}>
+            {[1, 2, 3, 4, 5].map((num) => {
+              const isSelected = priority === num;
+              
+              // Map numbers to professional labels and colors
+              let label = "Medium";
+              let activeColor = "#9D4EDD";
+              if (num === 1) { label = "Critical"; activeColor = "#EF476F"; }
+              else if (num === 2) { label = "High"; activeColor = "#F77F00"; }
+              else if (num === 3) { label = "Medium"; activeColor = "#FFD166"; }
+              else if (num === 4) { label = "Low"; activeColor = "#06D6A0"; }
+              else if (num === 5) { label = "Wishlist"; activeColor = "#118AB2"; }
+
+              return (
+                <TouchableOpacity
+                  key={num}
+                  onPress={() => setPriority(num)}
+                  activeOpacity={0.8}
+                  style={{
+                    flex: 1,
+                    marginHorizontal: 2,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: isSelected ? activeColor : "rgba(255, 255, 255, 0.08)",
+                    backgroundColor: isSelected ? `${activeColor}1F` : "rgba(255, 255, 255, 0.03)",
+                    paddingVertical: 8,
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
+                  <Text style={{
+                    color: isSelected ? "#FFFFFF" : "#8A90A8",
+                    fontSize: 14,
+                    fontFamily: "Geist-SemiBold"
+                  }}>
+                    {num}
+                  </Text>
+                  <Text style={{
+                    color: isSelected ? "#FFFFFF" : "#8A90A8",
+                    fontSize: 8,
+                    fontFamily: "Geist-Regular",
+                    marginTop: 2,
+                    textAlign: "center"
+                  }}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
           {/* ── Goal Preview Card ────────────────────────── */}
           <Text style={styles.sectionTitle}>Goal Preview:</Text>
           <View
@@ -343,12 +417,7 @@ export default function SavingsGoalScreen({ navigation, route }) {
             style={styles.buttonContainer}
           >
             <Animated.View style={[styles.buttonScaleWrapper, createGoalScaleStyle]}>
-              <LinearGradient
-                colors={["#9D4EDD", "#7B2CBF"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.buttonGradient}
-              >
+              <View style={styles.buttonSolid}>
                 {isLoading ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
@@ -356,11 +425,11 @@ export default function SavingsGoalScreen({ navigation, route }) {
                     {routeParams.fromDashboard ? "Add Goal" : "Create Goal"}
                   </Text>
                 )}
-              </LinearGradient>
+              </View>
             </Animated.View>
           </TouchableOpacity>
 
-        </View>
+        </ScrollView>
       </View>
     </View>
   );

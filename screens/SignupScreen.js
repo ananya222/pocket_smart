@@ -1,41 +1,82 @@
+import { API_BASE_URL } from "../config";
 // SignupScreen.js
 
 import React, { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, Alert, ScrollView,
-  Image, KeyboardAvoidingView, Platform, StatusBar, useWindowDimensions
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  useWindowDimensions,
+  SafeAreaView
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import { styles } from "../styles/SignupScreen.styles";
 import BackgroundGrid from "../components/BackgroundGrid";
 
+// Custom Input Component to handle focus borders and prevent main screen input re-render lags
+function PremiumInput({ icon, placeholder, value, onChangeText, secureTextEntry, isPassword, ...props }) {
+  const [isFocused, setIsFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <View style={[styles.inputContainer, isFocused && styles.inputContainerFocused]}>
+      <Feather name={icon} size={18} color={isFocused ? "#9D4EDD" : "#8A90A8"} style={styles.icon} />
+      <TextInput
+        placeholder={placeholder}
+        value={value}
+        onChangeText={onChangeText}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        style={styles.inputFlex}
+        secureTextEntry={isPassword ? !showPassword : secureTextEntry}
+        placeholderTextColor="#6C6F8F"
+        autoCapitalize="none"
+        {...props}
+      />
+      {isPassword && (
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+          <Feather name={showPassword ? "eye" : "eye-off"} size={18} color="#8A90A8" />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 export default function SignupScreen({ navigation }) {
-  const { width, height } = useWindowDimensions();
+  const { height } = useWindowDimensions();
   
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSignup = async () => {
-    if (!fullName || !phoneNumber || !email || !password || !confirmPassword) {
-      Alert.alert("Error", "Please fill all fields");
+    if (!fullName.trim() || !phoneNumber.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+      Alert.alert("Error", "Please fill in all fields.");
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+      Alert.alert("Error", "Passwords do not match.");
       return;
     }
     try {
-      const response = await fetch("http://192.168.1.4:5000/signup", {
+      const response = await fetch(`${API_BASE_URL}/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, phoneNumber, email, password }),
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          phoneNumber: phoneNumber.trim(),
+          email: email.trim(),
+          password: password.trim(),
+        }),
       });
       const data = await response.json();
       if (response.ok) {
@@ -52,138 +93,112 @@ export default function SignupScreen({ navigation }) {
   };
 
   const STATUS_BAR_HEIGHT = Platform.OS === "ios" ? 47 : (StatusBar.currentHeight || 24);
-  const headerHeight = Math.max(height * 0.30, 200);
 
   return (
     <View style={styles.mainContainer}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <BackgroundGrid type="signup" />
+
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        style={{ flex: 1, backgroundColor: "transparent" }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          style={{ flex: 1, backgroundColor: "#FFFFFF" }}
-          contentContainerStyle={[styles.scrollContainer, { paddingBottom: Platform.OS === "ios" ? 40 : 80 }]}
+          style={{ flex: 1, backgroundColor: "transparent" }}
+          contentContainerStyle={[styles.scrollContainer, { paddingTop: STATUS_BAR_HEIGHT + 16 }]}
           showsVerticalScrollIndicator={false}
           bounces={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Top Header Section */}
-          <LinearGradient
-            colors={["#9D4EDD", "#7B2CBF"]}
-            start={{ x: 1, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={[styles.headerWrapper, { height: headerHeight }]}
-          >
-            <BackgroundGrid type="auth" />
-            <TouchableOpacity
-              onPress={() => navigation.navigate("Login")}
-              style={[styles.backButtonContainer, { top: STATUS_BAR_HEIGHT + 10 }]}
+          {/* Header Row with Back Button */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", width: "100%", height: 40 }}>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate("Login")} 
+              style={styles.backButtonContainer}
+              activeOpacity={0.7}
             >
-              <Feather name="arrow-left" size={22} color="#FFFFFF" />
+              <Feather name="arrow-left" size={20} color="#FFFFFF" />
             </TouchableOpacity>
-            <View style={[styles.headerTextContainer, { paddingTop: STATUS_BAR_HEIGHT + 60 }]}>
-              <Text style={styles.headerTitle} adjustsFontSizeToFit numberOfLines={2}>
-                Create Account
-              </Text>
-              <Text style={styles.headerDescription}>
-                Join PocketSmart and start saving.
-              </Text>
-            </View>
-          </LinearGradient>
+          </View>
 
-          {/* Form Card Section */}
-          <View style={styles.card}>
-            {/* Full Name */}
-            <View style={styles.inputContainer}>
-              <Feather name="user" size={18} color="#9CA3AF" style={styles.icon} />
-              <TextInput
-                placeholder="Full Name"
-                value={fullName}
-                onChangeText={setFullName}
-                style={styles.inputFlex}
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
+          {/* Header text */}
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Create Account</Text>
+            <Text style={styles.headerDescription}>Join PocketSmart and start saving today.</Text>
+          </View>
 
-            {/* Phone Number */}
-            <View style={styles.inputContainer}>
-              <Feather name="phone" size={18} color="#9CA3AF" style={styles.icon} />
-              <TextInput
-                placeholder="Phone Number"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                style={styles.inputFlex}
-                placeholderTextColor="#9CA3AF"
-                keyboardType="phone-pad"
-              />
-            </View>
+          {/* Signup Form Card */}
+          <BlurView intensity={100} tint="dark" style={styles.card}>
+            
+            <Text style={styles.inputLabel}>Full Name</Text>
+            <PremiumInput
+              icon="user"
+              placeholder="Aarav Sharma"
+              value={fullName}
+              onChangeText={setFullName}
+            />
 
-            {/* Email */}
-            <View style={styles.inputContainer}>
-              <Feather name="mail" size={18} color="#9CA3AF" style={styles.icon} />
-              <TextInput
-                placeholder="Email Address"
-                value={email}
-                onChangeText={setEmail}
-                style={styles.inputFlex}
-                placeholderTextColor="#9CA3AF"
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
+            <Text style={styles.inputLabel}>Phone Number</Text>
+            <PremiumInput
+              icon="phone"
+              placeholder="9876543210"
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              keyboardType="phone-pad"
+            />
 
-            {/* Password */}
-            <View style={styles.inputContainer}>
-              <Feather name="lock" size={18} color="#9CA3AF" style={styles.icon} />
-              <TextInput
-                placeholder="Password"
-                value={password}
-                onChangeText={setPassword}
-                style={styles.inputFlex}
-                secureTextEntry={!showPassword}
-                placeholderTextColor="#9CA3AF"
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                <Feather name={showPassword ? "eye" : "eye-off"} size={18} color="#9CA3AF" />
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.inputLabel}>Email Address</Text>
+            <PremiumInput
+              icon="mail"
+              placeholder="aarav@pocketsmart.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+            />
 
-            {/* Confirm Password */}
-            <View style={styles.inputContainer}>
-              <Feather name="lock" size={18} color="#9CA3AF" style={styles.icon} />
-              <TextInput
-                placeholder="Confirm Password"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                style={styles.inputFlex}
-                secureTextEntry={!showConfirmPassword}
-                placeholderTextColor="#9CA3AF"
-              />
-              <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
-                <Feather name={showConfirmPassword ? "eye" : "eye-off"} size={18} color="#9CA3AF" />
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.inputLabel}>Password</Text>
+            <PremiumInput
+              icon="lock"
+              placeholder="••••••••••••"
+              value={password}
+              onChangeText={setPassword}
+              isPassword={true}
+            />
 
-            {/* Primary Sign Up Button */}
-            <TouchableOpacity style={styles.button} onPress={handleSignup} activeOpacity={0.85}>
-              <Text style={styles.buttonText}>Sign Up</Text>
+            <Text style={styles.inputLabel}>Confirm Password</Text>
+            <PremiumInput
+              icon="lock"
+              placeholder="••••••••••••"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              isPassword={true}
+            />
+
+            {/* Signup Button */}
+             <TouchableOpacity
+              onPress={handleSignup}
+              activeOpacity={0.85}
+              style={styles.buttonContainer}
+            >
+              <View style={styles.buttonSolid}>
+                <Text style={styles.buttonText}>Sign Up</Text>
+              </View>
             </TouchableOpacity>
 
             {/* Login redirect */}
             <TouchableOpacity onPress={() => navigation.navigate("Login")} style={styles.loginContainer}>
               <Text style={styles.loginTextSub}>
-                Already have an account? <Text style={styles.loginTextHighlight}>Log In   </Text>
+                Already have an account? <Text style={styles.loginTextHighlight}>Log In</Text>
               </Text>
             </TouchableOpacity>
 
             {/* Trust Badge */}
             <View style={styles.trustBadgeContainer}>
-              <Feather name="shield" size={15} color="#7B2CBF" style={styles.trustIcon} />
-              <Text style={styles.trustBadgeText}>Your data is safe and secure with us.   </Text>
+              <Feather name="shield" size={15} color="#8A90A8" style={styles.trustIcon} />
+              <Text style={styles.trustBadgeText}>Your data is safe and secure with us.</Text>
             </View>
-          </View>
+
+          </BlurView>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

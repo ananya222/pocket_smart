@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../config";
 // InsightsScreen.js
 import React, { useState } from "react";
 import {
@@ -12,7 +13,7 @@ import {
 } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import Svg, { Circle, G } from "react-native-svg";
+import Svg, { Circle, G, Rect, Text as SvgText } from "react-native-svg";
 import { getStyles } from "../styles/InsightsScreen.styles";
 import BackgroundGrid from "../components/BackgroundGrid";
 
@@ -37,9 +38,9 @@ function DonutChart({ data, totalSpent, isSmallDevice }) {
             stroke="rgba(255, 255, 255, 0.04)"
             strokeWidth={strokeWidth}
           />
-          {data.map((item, idx) => {
+          {totalSpent > 0 && data.map((item, idx) => {
             const percent = (item.value / totalSpent) * 100;
-            if (percent <= 0) return null;
+            if (isNaN(percent) || percent <= 0) return null;
 
             const strokeDashoffset = circumference - (circumference * percent) / 100;
             const strokeDasharray = `${circumference} ${circumference}`;
@@ -76,236 +77,155 @@ function DonutChart({ data, totalSpent, isSmallDevice }) {
       </View>
     </View>
   );
-}// Define monthsData outside component to prevent re-creation and reference errors during dynamic index initialization
+}
+
+// Custom premium SVG Bar Chart component
+function BarChart({ data, categoryColorMap, isSmallDevice }) {
+  const chartHeight = 90; // Height of the bar chart area
+  const graphHeight = 150;
+  const graphWidth = 320;
+  const paddingLeft = 15;
+  const paddingRight = 15;
+  const paddingTop = 25;
+  const paddingBottom = 20;
+
+  const maxSpent = Math.max(...data.map(d => d.totalSpent), 1000);
+  const N = data.length;
+  const containerWidth = graphWidth - paddingLeft - paddingRight;
+  const spacing = 12;
+  const barWidth = Math.max(16, (containerWidth - (N - 1) * spacing) / N);
+
+  const formatAmount = (amt) => {
+    if (amt === 0) return "₹0";
+    if (amt >= 1000) return `₹${(amt / 1000).toFixed(1)}k`.replace(".0", "");
+    return `₹${amt}`;
+  };
+
+  const categoriesList = ["Food & Drinks", "Entertainment", "Shopping", "Transport", "Misc", "Bills & Utilities"];
+
+  return (
+    <View style={{ alignItems: "center", justifyContent: "center", height: 160, width: "100%", paddingVertical: 5 }}>
+      <Svg width={graphWidth} height={graphHeight} viewBox={`0 0 ${graphWidth} ${graphHeight}`}>
+        {/* Subtle baseline */}
+        <Rect
+          x={paddingLeft}
+          y={paddingTop + chartHeight}
+          width={containerWidth}
+          height={1}
+          fill="rgba(255, 255, 255, 0.08)"
+        />
+
+        {data.map((item, idx) => {
+          const x = paddingLeft + idx * (barWidth + spacing) + (containerWidth - (N * barWidth + (N - 1) * spacing)) / 2;
+          
+          // Calculate category spent for this specific month
+          const categorySpend = {};
+          categoriesList.forEach(name => { categorySpend[name] = 0; });
+          
+          if (item.transactions) {
+            item.transactions.forEach(tx => {
+              const category = tx.category === "Others" ? "Misc" : tx.category;
+              if (categorySpend[category] !== undefined) {
+                categorySpend[category] += Math.abs(tx.amount);
+              }
+            });
+          }
+
+          let currentY = paddingTop + chartHeight;
+          const segments = [];
+
+          categoriesList.forEach((catName) => {
+            const spentAmt = categorySpend[catName] || 0;
+            if (spentAmt > 0) {
+              const segmentHeight = (spentAmt / maxSpent) * chartHeight;
+              const segY = currentY - segmentHeight;
+              const color = (categoryColorMap && categoryColorMap[catName]) || "#9D4EDD";
+              segments.push({
+                y: segY,
+                height: segmentHeight,
+                color,
+              });
+              currentY -= segmentHeight;
+            }
+          });
+
+          // The total height of the stack (y position of the top segment)
+          const topY = segments.length > 0 ? segments[segments.length - 1].y : (paddingTop + chartHeight);
+
+          return (
+            <G key={idx}>
+              {/* Stacked Bar Segments */}
+              {segments.map((seg, sIdx) => {
+                const isTop = sIdx === segments.length - 1;
+                return (
+                  <Rect
+                    key={sIdx}
+                    x={x}
+                    y={seg.y}
+                    width={barWidth}
+                    height={seg.height}
+                    fill={seg.color}
+                    rx={isTop ? Math.min(barWidth / 2, 4) : 0}
+                    ry={isTop ? Math.min(barWidth / 2, 4) : 0}
+                  />
+                );
+              })}
+
+              {/* Value Label above Bar */}
+              <SvgText
+                x={x + barWidth / 2}
+                y={topY - 6}
+                fill="#FFFFFF"
+                fontSize={8}
+                fontFamily="Geist-Regular"
+                textAnchor="middle"
+              >
+                {formatAmount(item.totalSpent)}
+              </SvgText>
+
+              {/* Month Label below Bar */}
+              <SvgText
+                x={x + barWidth / 2}
+                y={paddingTop + chartHeight + 16}
+                fill="#8A90A8"
+                fontSize={9}
+                fontFamily="Geist-Regular"
+                textAnchor="middle"
+              >
+                {item.shortLabel}
+              </SvgText>
+            </G>
+          );
+        })}
+      </Svg>
+    </View>
+  );
+}
+
+// Define monthsData outside component to prevent re-creation and reference errors during dynamic index initialization
+const CATEGORY_TEMPLATES = [
+  { name: "Food & Drinks", icon: "coffee" },
+  { name: "Entertainment", icon: "film" },
+  { name: "Shopping", icon: "shopping-bag" },
+  { name: "Transport", icon: "map-pin" },
+  { name: "Misc", icon: "grid" },
+  { name: "Bills & Utilities", icon: "file-text" },
+];
+
 const monthsData = [
-  {
-    monthLabel: "December 2026",
-    totalSpent: 3500,
-    categories: [
-      { name: "Food & Drinks", value: 1300, color: "#5A189A", icon: "coffee" },
-      { name: "Entertainment", value: 900, color: "#7B2CBF", icon: "film" },
-      { name: "Shopping", value: 700, color: "#9D4EDD", icon: "shopping-bag" },
-      { name: "Transport", value: 400, color: "#BE8CFA", icon: "map-pin" },
-      { name: "Others", value: 200, color: "#D8B4F8", icon: "grid" },
-    ],
-    transactions: [
-      { title: "Pizza Hut Party", category: "Food & Drinks", amount: -650, date: "25 Dec", icon: "coffee" },
-      { title: "Netflix Premium", category: "Entertainment", amount: -649, date: "15 Dec", icon: "film" },
-      { title: "Metro Card Load", category: "Transport", amount: -400, date: "10 Dec", icon: "map-pin" },
-      { title: "Warm Winter Jacket", category: "Shopping", amount: -700, date: "05 Dec", icon: "shopping-bag" },
-      { title: "Cafe Latte", category: "Food & Drinks", amount: -250, date: "02 Dec", icon: "coffee" },
-      { title: "Pharmacy Store", category: "Others", amount: -200, date: "01 Dec", icon: "grid" },
-    ],
-  },
-  {
-    monthLabel: "November 2026",
-    totalSpent: 2900,
-    categories: [
-      { name: "Food & Drinks", value: 1000, color: "#5A189A", icon: "coffee" },
-      { name: "Entertainment", value: 800, color: "#7B2CBF", icon: "film" },
-      { name: "Shopping", value: 500, color: "#9D4EDD", icon: "shopping-bag" },
-      { name: "Transport", value: 400, color: "#BE8CFA", icon: "map-pin" },
-      { name: "Others", value: 200, color: "#D8B4F8", icon: "grid" },
-    ],
-    transactions: [
-      { title: "Burger King", category: "Food & Drinks", amount: -350, date: "22 Nov", icon: "coffee" },
-      { title: "Concert Ticket", category: "Entertainment", amount: -600, date: "15 Nov", icon: "film" },
-      { title: "Auto Rickshaw Fare", category: "Transport", amount: -100, date: "10 Nov", icon: "map-pin" },
-      { title: "New Sneakers", category: "Shopping", amount: -500, date: "05 Nov", icon: "shopping-bag" },
-      { title: "College Tea Stall", category: "Food & Drinks", amount: -150, date: "02 Nov", icon: "coffee" },
-      { title: "Stationery Notebooks", category: "Others", amount: -200, date: "01 Nov", icon: "grid" },
-    ],
-  },
-  {
-    monthLabel: "October 2026",
-    totalSpent: 3200,
-    categories: [
-      { name: "Food & Drinks", value: 1200, color: "#5A189A", icon: "coffee" },
-      { name: "Entertainment", value: 800, color: "#7B2CBF", icon: "film" },
-      { name: "Shopping", value: 600, color: "#9D4EDD", icon: "shopping-bag" },
-      { name: "Transport", value: 400, color: "#BE8CFA", icon: "map-pin" },
-      { name: "Others", value: 200, color: "#D8B4F8", icon: "grid" },
-    ],
-    transactions: [
-      { title: "Subway Meal", category: "Food & Drinks", amount: -450, date: "26 Oct", icon: "coffee" },
-      { title: "Cinema Movie Ticket", category: "Entertainment", amount: -350, date: "20 Oct", icon: "film" },
-      { title: "Cab Ride", category: "Transport", amount: -400, date: "15 Oct", icon: "map-pin" },
-      { title: "College Backpack", category: "Shopping", amount: -600, date: "10 Oct", icon: "shopping-bag" },
-      { title: "Soda & Snacks", category: "Food & Drinks", amount: -200, date: "08 Oct", icon: "coffee" },
-      { title: "Stationery Shop", category: "Others", amount: -200, date: "02 Oct", icon: "grid" },
-    ],
-  },
-  {
-    monthLabel: "September 2026",
-    totalSpent: 2700,
-    categories: [
-      { name: "Food & Drinks", value: 900, color: "#5A189A", icon: "coffee" },
-      { name: "Entertainment", value: 700, color: "#7B2CBF", icon: "film" },
-      { name: "Shopping", value: 500, color: "#9D4EDD", icon: "shopping-bag" },
-      { name: "Transport", value: 400, color: "#BE8CFA", icon: "map-pin" },
-      { name: "Others", value: 200, color: "#D8B4F8", icon: "grid" },
-    ],
-    transactions: [
-      { title: "Canteen Lunch", category: "Food & Drinks", amount: -300, date: "24 Sep", icon: "coffee" },
-      { title: "Spotify Premium", category: "Entertainment", amount: -179, date: "15 Sep", icon: "film" },
-      { title: "Metro Pass Load", category: "Transport", amount: -400, date: "10 Sep", icon: "map-pin" },
-      { title: "Casual T-Shirt", category: "Shopping", amount: -500, date: "05 Sep", icon: "shopping-bag" },
-      { title: "Bubble Tea", category: "Food & Drinks", amount: -150, date: "02 Sep", icon: "coffee" },
-      { title: "Barber Shop Haircut", category: "Others", amount: -200, date: "01 Sep", icon: "grid" },
-    ],
-  },
-  {
-    monthLabel: "August 2026",
-    totalSpent: 3100,
-    categories: [
-      { name: "Food & Drinks", value: 1100, color: "#5A189A", icon: "coffee" },
-      { name: "Entertainment", value: 900, color: "#7B2CBF", icon: "film" },
-      { name: "Shopping", value: 500, color: "#9D4EDD", icon: "shopping-bag" },
-      { name: "Transport", value: 400, color: "#BE8CFA", icon: "map-pin" },
-      { name: "Others", value: 200, color: "#D8B4F8", icon: "grid" },
-    ],
-    transactions: [
-      { title: "McDonald's Meal", category: "Food & Drinks", amount: -450, date: "28 Aug", icon: "coffee" },
-      { title: "Bowling Alley", category: "Entertainment", amount: -500, date: "24 Aug", icon: "film" },
-      { title: "Metro Ride Pass", category: "Transport", amount: -400, date: "20 Aug", icon: "map-pin" },
-      { title: "Jeans Denim", category: "Shopping", amount: -500, date: "15 Aug", icon: "shopping-bag" },
-      { title: "Frappe Coffee", category: "Food & Drinks", amount: -200, date: "10 Aug", icon: "coffee" },
-      { title: "Birthday Gift", category: "Others", amount: -200, date: "05 Aug", icon: "grid" },
-    ],
-  },
-  {
-    monthLabel: "July 2026",
-    totalSpent: 2600,
-    categories: [
-      { name: "Food & Drinks", value: 900, color: "#5A189A", icon: "coffee" },
-      { name: "Entertainment", value: 600, color: "#7B2CBF", icon: "film" },
-      { name: "Shopping", value: 500, color: "#9D4EDD", icon: "shopping-bag" },
-      { name: "Transport", value: 400, color: "#BE8CFA", icon: "map-pin" },
-      { name: "Others", value: 200, color: "#D8B4F8", icon: "grid" },
-    ],
-    transactions: [
-      { title: "Cafe Bistro", category: "Food & Drinks", amount: -350, date: "25 Jul", icon: "coffee" },
-      { title: "Netflix Subscription", category: "Entertainment", amount: -199, date: "15 Jul", icon: "film" },
-      { title: "Auto Rides", category: "Transport", amount: -300, date: "10 Jul", icon: "map-pin" },
-      { title: "Summer Sneakers", category: "Shopping", amount: -500, date: "05 Jul", icon: "shopping-bag" },
-      { title: "Canteen Snacks", category: "Food & Drinks", amount: -150, date: "02 Jul", icon: "coffee" },
-      { title: "Phone Case", category: "Others", amount: -200, date: "01 Jul", icon: "grid" },
-    ],
-  },
-  {
-    monthLabel: "June 2026",
-    totalSpent: 3120,
-    categories: [
-      { name: "Food & Drinks", value: 1200, color: "#5A189A", icon: "coffee" },
-      { name: "Entertainment", value: 850, color: "#7B2CBF", icon: "film" },
-      { name: "Shopping", value: 500, color: "#9D4EDD", icon: "shopping-bag" },
-      { name: "Transport", value: 450, color: "#BE8CFA", icon: "map-pin" },
-      { name: "Others", value: 120, color: "#D8B4F8", icon: "grid" },
-    ],
-    transactions: [
-      { title: "Starbucks Coffee", category: "Food & Drinks", amount: -180, date: "14 Jun", icon: "coffee" },
-      { title: "Netflix Subscription", category: "Entertainment", amount: -199, date: "10 Jun", icon: "film" },
-      { title: "Metro Ride", category: "Transport", amount: -40, date: "08 Jun", icon: "map-pin" },
-      { title: "Nike Sneakers Co", category: "Shopping", amount: -500, date: "05 Jun", icon: "shopping-bag" },
-      { title: "College Canteen", category: "Food & Drinks", amount: -350, date: "02 Jun", icon: "coffee" },
-      { title: "Stationery Shop", category: "Others", amount: -120, date: "01 Jun", icon: "grid" },
-    ],
-  },
-  {
-    monthLabel: "May 2026",
-    totalSpent: 2450,
-    categories: [
-      { name: "Food & Drinks", value: 950, color: "#5A189A", icon: "coffee" },
-      { name: "Entertainment", value: 600, color: "#7B2CBF", icon: "film" },
-      { name: "Shopping", value: 400, color: "#9D4EDD", icon: "shopping-bag" },
-      { name: "Transport", value: 350, color: "#BE8CFA", icon: "map-pin" },
-      { name: "Others", value: 150, color: "#D8B4F8", icon: "grid" },
-    ],
-    transactions: [
-      { title: "McDonalds Lunch", category: "Food & Drinks", amount: -290, date: "28 May", icon: "coffee" },
-      { title: "Cinema Movie Ticket", category: "Entertainment", amount: -250, date: "24 May", icon: "film" },
-      { title: "Uber Cab Ride", category: "Transport", amount: -180, date: "20 May", icon: "map-pin" },
-      { title: "H&M Casual T-Shirt", category: "Shopping", amount: -400, date: "15 May", icon: "shopping-bag" },
-      { title: "Boba Bubble Tea", category: "Food & Drinks", amount: -120, date: "10 May", icon: "coffee" },
-      { title: "Novel Purchase", category: "Others", amount: -150, date: "05 May", icon: "grid" },
-    ],
-  },
-  {
-    monthLabel: "April 2026",
-    totalSpent: 4100,
-    categories: [
-      { name: "Food & Drinks", value: 1500, color: "#5A189A", icon: "coffee" },
-      { name: "Entertainment", value: 1200, color: "#7B2CBF", icon: "film" },
-      { name: "Shopping", value: 700, color: "#9D4EDD", icon: "shopping-bag" },
-      { name: "Transport", value: 500, color: "#BE8CFA", icon: "map-pin" },
-      { name: "Others", value: 200, color: "#D8B4F8", icon: "grid" },
-    ],
-    transactions: [
-      { title: "Pizza Hut Party", category: "Food & Drinks", amount: -850, date: "26 Apr", icon: "coffee" },
-      { title: "Steam Wallet Top-up", category: "Entertainment", amount: -800, date: "20 Apr", icon: "film" },
-      { title: "Local Metro Pass", category: "Transport", amount: -500, date: "18 Apr", icon: "map-pin" },
-      { title: "Gaming Mouse Redgear", category: "Shopping", amount: -700, date: "12 Apr", icon: "shopping-bag" },
-      { title: "Burger King Combo", category: "Food & Drinks", amount: -310, date: "08 Apr", icon: "coffee" },
-      { title: "Gift for Friend", category: "Others", amount: -200, date: "02 Apr", icon: "grid" },
-    ],
-  },
-  {
-    monthLabel: "March 2026",
-    totalSpent: 2900,
-    categories: [
-      { name: "Food & Drinks", value: 1100, color: "#5A189A", icon: "coffee" },
-      { name: "Entertainment", value: 700, color: "#7B2CBF", icon: "film" },
-      { name: "Shopping", value: 500, color: "#9D4EDD", icon: "shopping-bag" },
-      { name: "Transport", value: 400, color: "#BE8CFA", icon: "map-pin" },
-      { name: "Others", value: 200, color: "#D8B4F8", icon: "grid" },
-    ],
-    transactions: [
-      { title: "Subway Meal", category: "Food & Drinks", amount: -320, date: "25 Mar", icon: "coffee" },
-      { title: "BookMyShow Movie Ticket", category: "Entertainment", amount: -380, date: "18 Mar", icon: "film" },
-      { title: "Local Train Pass", category: "Transport", amount: -400, date: "12 Mar", icon: "map-pin" },
-      { title: "Jacket Purchase", category: "Shopping", amount: -500, date: "06 Mar", icon: "shopping-bag" },
-      { title: "Canteen Snacks", category: "Food & Drinks", amount: -200, date: "03 Mar", icon: "coffee" },
-      { title: "Medical Store", category: "Others", amount: -200, date: "01 Mar", icon: "grid" },
-    ],
-  },
-  {
-    monthLabel: "February 2026",
-    totalSpent: 3400,
-    categories: [
-      { name: "Food & Drinks", value: 1300, color: "#5A189A", icon: "coffee" },
-      { name: "Entertainment", value: 900, color: "#7B2CBF", icon: "film" },
-      { name: "Shopping", value: 600, color: "#9D4EDD", icon: "shopping-bag" },
-      { name: "Transport", value: 400, color: "#BE8CFA", icon: "map-pin" },
-      { name: "Others", value: 200, color: "#D8B4F8", icon: "grid" },
-    ],
-    transactions: [
-      { title: "KFC Bucket", category: "Food & Drinks", amount: -650, date: "22 Feb", icon: "coffee" },
-      { title: "Prime Video Renew", category: "Entertainment", amount: -299, date: "15 Feb", icon: "film" },
-      { title: "Metro Card Recharge", category: "Transport", amount: -400, date: "10 Feb", icon: "map-pin" },
-      { title: "Casual Backpack", category: "Shopping", amount: -600, date: "05 Feb", icon: "shopping-bag" },
-      { title: "Coffee Shop Date", category: "Food & Drinks", amount: -250, date: "02 Feb", icon: "coffee" },
-      { title: "Gym Supplement", category: "Others", amount: -200, date: "01 Feb", icon: "grid" },
-    ],
-  },
-  {
-    monthLabel: "January 2026",
-    totalSpent: 2800,
-    categories: [
-      { name: "Food & Drinks", value: 1000, color: "#5A189A", icon: "coffee" },
-      { name: "Entertainment", value: 600, color: "#7B2CBF", icon: "film" },
-      { name: "Shopping", value: 500, color: "#9D4EDD", icon: "shopping-bag" },
-      { name: "Transport", value: 500, color: "#BE8CFA", icon: "map-pin" },
-      { name: "Others", value: 200, color: "#D8B4F8", icon: "grid" },
-    ],
-    transactions: [
-      { title: "Dominoes Pizza", category: "Food & Drinks", amount: -450, date: "25 Jan", icon: "coffee" },
-      { title: "Spotify Premium", category: "Entertainment", amount: -179, date: "15 Jan", icon: "film" },
-      { title: "Auto Rickshaw Fare", category: "Transport", amount: -70, date: "10 Jan", icon: "map-pin" },
-      { title: "Warm Winter Hoodie", category: "Shopping", amount: -500, date: "05 Jan", icon: "shopping-bag" },
-      { title: "Chai & Samosa Stall", category: "Food & Drinks", amount: -150, date: "02 Jan", icon: "coffee" },
-      { title: "Pen & Notebooks", category: "Others", amount: -200, date: "01 Jan", icon: "grid" },
-    ],
-  },
+  { monthLabel: "All Time" },
+  { monthLabel: "December 2026" },
+  { monthLabel: "November 2026" },
+  { monthLabel: "October 2026" },
+  { monthLabel: "September 2026" },
+  { monthLabel: "August 2026" },
+  { monthLabel: "July 2026" },
+  { monthLabel: "June 2026" },
+  { monthLabel: "May 2026" },
+  { monthLabel: "April 2026" },
+  { monthLabel: "March 2026" },
+  { monthLabel: "February 2026" },
+  { monthLabel: "January 2026" },
 ];
 
 export default function InsightsScreen({ navigation, route }) {
@@ -327,9 +247,15 @@ export default function InsightsScreen({ navigation, route }) {
     ];
     const currentLabel = `${monthNames[now.getMonth()]} 2026`;
     const idx = monthsData.findIndex(m => m.monthLabel === currentLabel);
-    return idx !== -1 ? idx : 0;
+    return idx !== -1 ? idx : 0; // Fallback to "All Time" (index 0) if current month is not found
   });
   const [isMonthPickerVisible, setIsMonthPickerVisible] = useState(false);
+  const [analysisMode, setAnalysisMode] = useState("single"); // "single" | "range"
+  const [startMonthIndex, setStartMonthIndex] = useState(12); // January 2026 (oldest in range example, shifted)
+  const [endMonthIndex, setEndMonthIndex] = useState(7);      // June 2026 (newest in range example, shifted)
+  const [isStartPickerVisible, setIsStartPickerVisible] = useState(false);
+  const [isEndPickerVisible, setIsEndPickerVisible] = useState(false);
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
   const accentColor = "#9D4EDD";
   const [dbTransactions, setDbTransactions] = useState([]);
 
@@ -337,7 +263,7 @@ export default function InsightsScreen({ navigation, route }) {
     try {
       const userId = user.id || user.userId || route.params?.user?.id;
       if (!userId) return;
-      const response = await fetch(`http://192.168.1.4:5000/get_transactions?userId=${userId}`);
+      const response = await fetch(`${API_BASE_URL}/get_transactions?userId=${userId}`);
       const data = await response.json();
       if (response.ok && data.transactions) {
         setDbTransactions(data.transactions);
@@ -376,26 +302,15 @@ export default function InsightsScreen({ navigation, route }) {
 
   // Extract custom transactions for the currently viewed month, using robust deduplication
   const customMonthTransactions = getUniqueTransactions(dbTransactions, user.customTransactions)
-    .filter(tx => tx.monthLabel === currentMonthData.monthLabel);
+    .filter(tx => currentMonthData.monthLabel === "All Time" || tx.monthLabel === currentMonthData.monthLabel);
 
-  // Combine custom transactions with mock transaction logs
-  const monthlyTransactions = [
-    ...customMonthTransactions,
-    ...currentMonthData.transactions
-  ];
+  // Combine custom transactions only (exclude mock transactions)
+  const monthlyTransactionsSingle = customMonthTransactions;
 
-  // Dynamically map and clean mock categories: Rename "Others" -> "Misc"
-  const baseCategories = currentMonthData.categories.map(cat => {
-    if (cat.name === "Others") {
-      return { ...cat, name: "Misc", icon: "grid" };
-    }
-    return cat;
+  // Dynamically map standard categories setting base value to 0
+  const baseCategories = CATEGORY_TEMPLATES.map(cat => {
+    return { name: cat.name, value: 0, icon: cat.icon };
   });
-
-  // Ensure "Bills & Utilities" is present in base categories
-  if (!baseCategories.some(cat => cat.name === "Bills & Utilities")) {
-    baseCategories.push({ name: "Bills & Utilities", value: 0, icon: "file-text" });
-  }
 
   // Recalculate category spending amounts dynamically including user custom transactions
   const categoryValues = baseCategories.map(cat => {
@@ -404,23 +319,107 @@ export default function InsightsScreen({ navigation, route }) {
       .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
     return {
       ...cat,
-      value: cat.value + customSum
+      value: customSum
     };
   });
 
   // Calculate dynamic total spent for the active month
-  const totalSpent = categoryValues.reduce((sum, cat) => sum + cat.value, 0);
+  const totalSpentSingle = categoryValues.reduce((sum, cat) => sum + cat.value, 0);
 
-  // Monochromatic Purple Gradient Palette of 6 shades (ordered Darkest -> Lightest based on spent amount):
-  const PURPLE_SHADES = ["#3C096C", "#5A189A", "#7B2CBF", "#9D4EDD", "#BE8CFA", "#E0AAFF"];
+  // Vibrant contrasting multi-color palette (Blue, Green, Yellow, Red, Neon Cyan, Orange):
+  const VIBRANT_PALETTE = ["#3A86FF", "#06D6A0", "#FFBE0B", "#FF006E", "#00F5D4", "#FF9F1C"];
 
-  // Dynamically sort categories by value in descending order and assign monochromatic colors
-  const sortedCategories = [...categoryValues]
+  // Dynamically sort categories by value in descending order and assign colors
+  const sortedCategoriesSingle = [...categoryValues]
     .sort((a, b) => b.value - a.value)
     .map((cat, idx) => ({
       ...cat,
-      color: PURPLE_SHADES[idx] || PURPLE_SHADES[PURPLE_SHADES.length - 1],
+      color: VIBRANT_PALETTE[idx] || VIBRANT_PALETTE[VIBRANT_PALETTE.length - 1],
     }));
+
+  // Range Calculations
+  const minIdx = Math.min(startMonthIndex, endMonthIndex);
+  const maxIdx = Math.max(startMonthIndex, endMonthIndex);
+  const rangeMonths = monthsData.slice(minIdx, maxIdx + 1).reverse();
+  const uniqueAllTransactions = getUniqueTransactions(dbTransactions, user.customTransactions);
+
+  const rangeMonthsData = rangeMonths.map(month => {
+    const monthTxs = uniqueAllTransactions.filter(tx => tx.monthLabel === month.monthLabel);
+    const baseCats = CATEGORY_TEMPLATES.map(cat => ({
+      name: cat.name,
+      value: 0
+    }));
+    const catVals = baseCats.map(cat => {
+      const customSum = monthTxs
+        .filter(tx => tx.category === cat.name)
+        .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+      return { ...cat, value: customSum };
+    });
+    const mTotalSpent = catVals.reduce((sum, cat) => sum + cat.value, 0);
+    return {
+      monthLabel: month.monthLabel,
+      shortLabel: month.monthLabel.split(" ")[0].substring(0, 3),
+      totalSpent: mTotalSpent,
+      transactions: monthTxs
+    };
+  });
+
+  const aggregatedCategoriesMap = {};
+  const categoriesList = ["Food & Drinks", "Entertainment", "Shopping", "Transport", "Misc", "Bills & Utilities"];
+  categoriesList.forEach(name => {
+    aggregatedCategoriesMap[name] = 0;
+  });
+
+  rangeMonthsData.forEach(rm => {
+    rm.transactions.forEach(tx => {
+      const category = tx.category === "Others" ? "Misc" : tx.category;
+      if (aggregatedCategoriesMap[category] !== undefined) {
+        aggregatedCategoriesMap[category] += Math.abs(tx.amount);
+      }
+    });
+  });
+
+  const rangeCategoryValues = Object.keys(aggregatedCategoriesMap).map(name => {
+    let icon = "grid";
+    if (name === "Food & Drinks") icon = "coffee";
+    else if (name === "Entertainment") icon = "film";
+    else if (name === "Shopping") icon = "shopping-bag";
+    else if (name === "Transport") icon = "map-pin";
+    else if (name === "Bills & Utilities") icon = "file-text";
+    return {
+      name,
+      value: aggregatedCategoriesMap[name],
+      icon
+    };
+  });
+
+  const totalSpentRange = rangeCategoryValues.reduce((sum, cat) => sum + cat.value, 0);
+
+  const sortedCategoriesRange = [...rangeCategoryValues]
+    .sort((a, b) => b.value - a.value)
+    .map((cat, idx) => ({
+      ...cat,
+      color: VIBRANT_PALETTE[idx] || VIBRANT_PALETTE[VIBRANT_PALETTE.length - 1],
+    }));
+
+  const monthlyTransactionsRange = rangeMonthsData.reduce((all, rm) => {
+    return [...all, ...rm.transactions];
+  }, []);
+
+  // Dynamic conditional displays
+  const totalSpent = analysisMode === "single" ? totalSpentSingle : totalSpentRange;
+  const sortedCategories = analysisMode === "single" ? sortedCategoriesSingle : sortedCategoriesRange;
+  const monthlyTransactions = analysisMode === "single" ? monthlyTransactionsSingle : monthlyTransactionsRange;
+  const displayedTransactions = showAllTransactions ? monthlyTransactions : monthlyTransactions.slice(0, 5);
+
+  // Map category name to its color
+  const categoryColorMap = React.useMemo(() => {
+    const mapping = {};
+    sortedCategories.forEach(cat => {
+      mapping[cat.name] = cat.color;
+    });
+    return mapping;
+  }, [sortedCategories]);
 
   const handleLogout = () => {
     navigation.reset({
@@ -441,7 +440,7 @@ export default function InsightsScreen({ navigation, route }) {
           style={{ flex: 1 }}
           contentContainerStyle={[styles.scrollContainer, { paddingTop: STATUS_BAR_HEIGHT + 10 }]}
           showsVerticalScrollIndicator={false}
-          scrollEnabled={!isMonthPickerVisible}
+          scrollEnabled={!isMonthPickerVisible && !isStartPickerVisible && !isEndPickerVisible}
         >
           {/* Header Row */}
           <View style={styles.headerRow}>
@@ -452,53 +451,188 @@ export default function InsightsScreen({ navigation, route }) {
             <View style={styles.placeholderButton} />
           </View>
 
-          {/* Month Picker Dropdown Container */}
-          <View>
+          {/* Mode Toggle Selector */}
+          <View style={styles.toggleContainer}>
             <TouchableOpacity
-              onPress={() => setIsMonthPickerVisible(!isMonthPickerVisible)}
-              style={styles.monthPickerButton}
-              activeOpacity={0.8}
+              onPress={() => {
+                setAnalysisMode("single");
+                setIsStartPickerVisible(false);
+                setIsEndPickerVisible(false);
+              }}
+              style={[styles.togglePill, analysisMode === "single" && styles.togglePillActive]}
+              activeOpacity={0.7}
             >
-              <Text style={styles.monthPickerText}>{currentMonthData.monthLabel}</Text>
-              <Feather name={isMonthPickerVisible ? "chevron-up" : "chevron-down"} size={18} color="#FFFFFF" />
+              <Text style={[styles.toggleText, analysisMode === "single" && styles.toggleTextActive]}>
+                Single Month
+              </Text>
             </TouchableOpacity>
-
-            {/* Inline Dropdown List Container */}
-            {isMonthPickerVisible && (
-              <BlurView intensity={95} tint="dark" style={styles.dropdownListCard}>
-                <ScrollView style={{ maxHeight: 176 }} nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
-                  {monthsData.map((month, idx) => {
-                    const isLast = idx === monthsData.length - 1;
-                    const isActive = activeMonthIndex === idx;
-                    return (
-                      <TouchableOpacity
-                        key={idx}
-                        onPress={() => {
-                          setActiveMonthIndex(idx);
-                          setIsMonthPickerVisible(false);
-                        }}
-                        style={isLast ? styles.dropdownListItemLast : styles.dropdownListItem}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.dropdownListItemText, isActive && styles.dropdownListItemTextActive]}>
-                          {month.monthLabel}
-                        </Text>
-                        {isActive && <Feather name="check" size={14} color={accentColor} />}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </BlurView>
-            )}
+            <TouchableOpacity
+              onPress={() => {
+                setAnalysisMode("range");
+                setIsMonthPickerVisible(false);
+              }}
+              style={[styles.togglePill, analysisMode === "range" && styles.togglePillActive]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.toggleText, analysisMode === "range" && styles.toggleTextActive]}>
+                Monthly Range
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Pie/Donut Chart Card */}
+          {/* Month Picker Dropdown Container */}
+          {analysisMode === "single" ? (
+            <View style={{ marginBottom: isSmallDevice ? 12 : 16 }}>
+              <TouchableOpacity
+                onPress={() => setIsMonthPickerVisible(!isMonthPickerVisible)}
+                style={styles.monthPickerButton}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.monthPickerText}>{currentMonthData.monthLabel}</Text>
+                <Feather name={isMonthPickerVisible ? "chevron-up" : "chevron-down"} size={18} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              {/* Inline Dropdown List Container */}
+              {isMonthPickerVisible && (
+                <BlurView intensity={95} tint="dark" style={styles.dropdownListCard}>
+                  <ScrollView style={{ maxHeight: 176 }} nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
+                    {monthsData.map((month, idx) => {
+                      const isLast = idx === monthsData.length - 1;
+                      const isActive = activeMonthIndex === idx;
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          onPress={() => {
+                            setActiveMonthIndex(idx);
+                            setIsMonthPickerVisible(false);
+                          }}
+                          style={isLast ? styles.dropdownListItemLast : styles.dropdownListItem}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.dropdownListItemText, isActive && styles.dropdownListItemTextActive]}>
+                            {month.monthLabel}
+                          </Text>
+                          {isActive && <Feather name="check" size={14} color={accentColor} />}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </BlurView>
+              )}
+            </View>
+          ) : (
+            <View style={{ marginBottom: isSmallDevice ? 12 : 16 }}>
+              <View style={styles.rangePickersRow}>
+                <View style={{ flex: 1, marginRight: 6 }}>
+                  <Text style={styles.pickerLabel}>FROM</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsStartPickerVisible(!isStartPickerVisible);
+                      setIsEndPickerVisible(false);
+                    }}
+                    style={styles.monthPickerButton}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.monthPickerText} numberOfLines={1}>
+                      {monthsData[startMonthIndex].monthLabel}
+                    </Text>
+                    <Feather name={isStartPickerVisible ? "chevron-up" : "chevron-down"} size={18} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={{ flex: 1, marginLeft: 6 }}>
+                  <Text style={styles.pickerLabel}>TO</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsEndPickerVisible(!isEndPickerVisible);
+                      setIsStartPickerVisible(false);
+                    }}
+                    style={styles.monthPickerButton}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.monthPickerText} numberOfLines={1}>
+                      {monthsData[endMonthIndex].monthLabel}
+                    </Text>
+                    <Feather name={isEndPickerVisible ? "chevron-up" : "chevron-down"} size={18} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Start Picker Dropdown */}
+              {isStartPickerVisible && (
+                <BlurView intensity={95} tint="dark" style={styles.dropdownListCard}>
+                  <ScrollView style={{ maxHeight: 176 }} nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
+                    {monthsData.map((month, idx) => {
+                      if (month.monthLabel === "All Time") return null;
+                      const isLast = idx === monthsData.length - 1;
+                      const isActive = startMonthIndex === idx;
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          onPress={() => {
+                            setStartMonthIndex(idx);
+                            setIsStartPickerVisible(false);
+                          }}
+                          style={isLast ? styles.dropdownListItemLast : styles.dropdownListItem}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.dropdownListItemText, isActive && styles.dropdownListItemTextActive]}>
+                            {month.monthLabel}
+                          </Text>
+                          {isActive && <Feather name="check" size={14} color={accentColor} />}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </BlurView>
+              )}
+
+              {/* End Picker Dropdown */}
+              {isEndPickerVisible && (
+                <BlurView intensity={95} tint="dark" style={styles.dropdownListCard}>
+                  <ScrollView style={{ maxHeight: 176 }} nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
+                    {monthsData.map((month, idx) => {
+                      if (month.monthLabel === "All Time") return null;
+                      const isLast = idx === monthsData.length - 1;
+                      const isActive = endMonthIndex === idx;
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          onPress={() => {
+                            setEndMonthIndex(idx);
+                            setIsEndPickerVisible(false);
+                          }}
+                          style={isLast ? styles.dropdownListItemLast : styles.dropdownListItem}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.dropdownListItemText, isActive && styles.dropdownListItemTextActive]}>
+                            {month.monthLabel}
+                          </Text>
+                          {isActive && <Feather name="check" size={14} color={accentColor} />}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </BlurView>
+              )}
+            </View>
+          )}
+
+          {/* Chart Card */}
           <BlurView intensity={90} tint="dark" style={styles.chartCard}>
-            <DonutChart
-              data={sortedCategories}
-              totalSpent={totalSpent}
-              isSmallDevice={isSmallDevice}
-            />
+            {analysisMode === "single" ? (
+              <DonutChart
+                data={sortedCategories}
+                totalSpent={totalSpent}
+                isSmallDevice={isSmallDevice}
+              />
+            ) : (
+              <BarChart
+                data={rangeMonthsData}
+                categoryColorMap={categoryColorMap}
+                isSmallDevice={isSmallDevice}
+              />
+            )}
           </BlurView>
 
           {/* Category Breakdown */}
@@ -506,7 +640,7 @@ export default function InsightsScreen({ navigation, route }) {
           <BlurView intensity={90} tint="dark" style={styles.breakdownCard}>
             {sortedCategories.map((cat, idx) => {
               const isLast = idx === sortedCategories.length - 1;
-              const percent = Math.round((cat.value / totalSpent) * 100);
+              const percent = totalSpent > 0 ? Math.round((cat.value / totalSpent) * 100) : 0;
               return (
                 <View key={idx} style={isLast ? styles.breakdownItemLast : styles.breakdownItem}>
                   <View style={styles.categoryLeft}>
@@ -523,30 +657,60 @@ export default function InsightsScreen({ navigation, route }) {
           </BlurView>
 
           {/* Monthly Transactions List */}
-          <Text style={styles.sectionTitle}>Transactions for {currentMonthData.monthLabel.split(" ")[0]}</Text>
+          <Text style={styles.sectionTitle}>
+            {currentMonthData.monthLabel === "All Time" ? "All Transactions" : `Transactions for ${currentMonthData.monthLabel.split(" ")[0]}`}
+          </Text>
           <BlurView intensity={90} tint="dark" style={styles.transactionCard}>
-            {monthlyTransactions.map((tx, idx) => {
-              const isLast = idx === monthlyTransactions.length - 1;
-              return (
-                <View key={idx} style={isLast ? styles.transactionItemLast : styles.transactionItem}>
-                  <View style={styles.transactionIconWrapper}>
-                    <Feather name={tx.icon} size={15} color={accentColor} />
-                  </View>
-                  <View style={styles.transactionDetails}>
-                    <Text style={styles.transactionTitle}>{tx.title}</Text>
-                    <Text style={styles.transactionCategory}>
-                      {tx.category === "Others" ? "Misc" : tx.category}
+            {displayedTransactions.length === 0 ? (
+              <View style={{ paddingVertical: 24, alignItems: "center" }}>
+                <Text style={{ color: "#8A90A8", fontSize: 13, fontFamily: "Geist-Regular" }}>
+                  No transactions recorded this month.
+                </Text>
+              </View>
+            ) : (
+              <>
+                {displayedTransactions.map((tx, idx) => {
+                  const isLast = idx === displayedTransactions.length - 1;
+                  return (
+                    <View key={idx} style={isLast && !showAllTransactions ? styles.transactionItemLast : styles.transactionItem}>
+                      <View style={styles.transactionIconWrapper}>
+                        <Feather name={tx.icon} size={15} color={accentColor} />
+                      </View>
+                      <View style={styles.transactionDetails}>
+                        <Text style={styles.transactionTitle}>{tx.title}</Text>
+                        <Text style={styles.transactionCategory}>
+                          {tx.category === "Others" ? "Misc" : tx.category}
+                        </Text>
+                      </View>
+                      <View style={styles.transactionAmountContainer}>
+                        <Text style={styles.transactionAmount}>
+                          -₹{Math.abs(tx.amount).toLocaleString("en-IN")}
+                        </Text>
+                        <Text style={styles.transactionDate}>{tx.date}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+
+                {monthlyTransactions.length > 5 && (
+                  <TouchableOpacity
+                    onPress={() => setShowAllTransactions(!showAllTransactions)}
+                    style={styles.viewAllButton}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.viewAllText}>
+                      {showAllTransactions ? "Show Less" : `View All (${monthlyTransactions.length})`}
                     </Text>
-                  </View>
-                  <View style={styles.transactionAmountContainer}>
-                    <Text style={styles.transactionAmount}>
-                      -₹{Math.abs(tx.amount).toLocaleString("en-IN")}
-                    </Text>
-                    <Text style={styles.transactionDate}>{tx.date}</Text>
-                  </View>
-                </View>
-              );
-            })}
+                    <Feather
+                      name={showAllTransactions ? "chevron-up" : "chevron-down"}
+                      size={14}
+                      color={accentColor}
+                      style={{ marginLeft: 4 }}
+                    />
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
           </BlurView>
         </ScrollView>
       </SafeAreaView>
@@ -586,7 +750,11 @@ export default function InsightsScreen({ navigation, route }) {
           <Feather name="bar-chart-2" size={21} color={accentColor} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.7} onPress={handleLogout}>
+        <TouchableOpacity 
+          style={styles.navItem} 
+          activeOpacity={0.7} 
+          onPress={() => navigation.navigate("Profile", { user })}
+        >
           <Feather name="user" size={21} color="#8A90A8" />
         </TouchableOpacity>
       </View>

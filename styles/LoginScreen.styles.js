@@ -197,15 +197,18 @@ export const styles = StyleSheet.create({
     marginBottom: 18,
   },
 
-  loginButtonGradient: {
+  loginButtonSolid: {
     flex: 1,
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(157, 78, 221, 0.65)",
+    backgroundColor: "rgba(157, 78, 221, 0.28)",
   },
 
   loginButtonText: {
-    color: "#111210",
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
     fontFamily: "DMSerifDisplay-Regular",

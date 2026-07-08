@@ -5,6 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "backgroundColor": "#111210",
     "plugins": [
       "@react-native-community/datetimepicker",
       "expo-font",
@@ -22,6 +23,10 @@
       "eas": {
         "projectId": "ef1567db-d5eb-4c79-9d4a-f74104b9c02c"
       }
+    },
+    "android": {
+      "package": "com.pocketsmart.myapp",
+      "backgroundColor": "#111210"
     }
   }
 }

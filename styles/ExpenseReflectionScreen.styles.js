@@ -53,16 +53,36 @@ export const getStyles = (isSmallDevice) => StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.06)",
     backgroundColor: "rgba(255, 255, 255, 0.02)",
-    paddingVertical: isSmallDevice ? 20 : 28,
+    paddingVertical: isSmallDevice ? 16 : 22,
     paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: isSmallDevice ? 28 : 36,
+    marginBottom: 12,
+  },
+
+  futureValueCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.06)",
+    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    paddingVertical: isSmallDevice ? 16 : 22,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: isSmallDevice ? 24 : 32,
   },
 
   impactValue: {
-    fontSize: isSmallDevice ? 40 : 48,
+    fontSize: isSmallDevice ? 30 : 36,
     color: "#FF6B6B", // soft warning red
+    fontFamily: "Geist-SemiBold",
+    marginBottom: 6,
+    textAlign: "center",
+  },
+
+  futureValueText: {
+    fontSize: isSmallDevice ? 30 : 36,
+    color: "#6AC97A", // growth green (shows the potential future value of saved money)
     fontFamily: "Geist-SemiBold",
     marginBottom: 6,
     textAlign: "center",
@@ -106,20 +126,21 @@ export const getStyles = (isSmallDevice) => StyleSheet.create({
     height: 46,
     borderRadius: 23,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.06)",
-    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
     justifyContent: "center",
     alignItems: "center",
     marginHorizontal: 6,
-  },  choiceButtonActive: {
-    backgroundColor: "rgba(157, 78, 221, 0.16)",
-    borderColor: "rgba(157, 78, 221, 0.45)",
+  },
+  choiceButtonActive: {
+    backgroundColor: "rgba(157, 78, 221, 0.28)",
+    borderColor: "rgba(157, 78, 221, 0.65)",
   },
 
   choiceButtonText: {
     fontSize: 14,
     color: "#8A90A8",
-    fontFamily: "Geist-SemiBold",
+    fontFamily: "DMSerifDisplay-Regular",
     letterSpacing: 0.2,
   },
 
@@ -158,8 +179,8 @@ export const getStyles = (isSmallDevice) => StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(157, 78, 221, 0.45)",
-    backgroundColor: "rgba(157, 78, 221, 0.16)",
+    borderColor: "rgba(157, 78, 221, 0.65)",
+    backgroundColor: "rgba(157, 78, 221, 0.28)",
     justifyContent: "center",
     alignItems: "center",
     marginTop: 8,
@@ -168,6 +189,6 @@ export const getStyles = (isSmallDevice) => StyleSheet.create({
   submitButtonText: {
     color: "#FFFFFF",
     fontSize: 14,
-    fontFamily: "Geist-SemiBold",
+    fontFamily: "DMSerifDisplay-Regular",
   },
 });

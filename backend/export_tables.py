@@ -1,15 +1,10 @@
 # export_tables.py
-import mysql.connector
 import os
+from init_db import get_db
 
 def export_database_to_markdown():
     try:
-        db = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="Home@2024",
-            database="pocketsmart"
-        )
+        db = get_db()
         cursor = db.cursor()
 
         # Get list of tables

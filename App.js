@@ -1,32 +1,175 @@
 import React, { useEffect, useState } from "react";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Feather } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
 import { View, ActivityIndicator, Platform } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
 import * as NavigationBar from "expo-navigation-bar";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_BASE_URL } from "./config";
+import { apiFetch, getToken, removeToken } from "./config";
 
-import LoginScreen from "./screens/LoginScreen";
-import SignupScreen from "./screens/SignupScreen";
-import OtpScreen from "./screens/OtpScreen";
-import WelcomeScreen from "./screens/WelcomeScreen";
-import PocketMoneyScreen from "./screens/PocketMoneyScreen";
-import SavingsGoalScreen from "./screens/SavingsGoalScreen";
-import OnboardingCompleteScreen from "./screens/OnboardingCompleteScreen";
-import DashboardScreen from "./screens/DashboardScreen";
-import GoalsScreen from "./screens/GoalsScreen";
-import ConfirmGoalScreen from "./screens/ConfirmGoalScreen";
-import AllocationScreen from "./screens/AllocationScreen";
-import GoalAchievedScreen from "./screens/GoalAchievedScreen";
-import InsightsScreen from "./screens/InsightsScreen";
-import AddExpenseScreen from "./screens/AddExpenseScreen";
-import ExpenseReflectionScreen from "./screens/ExpenseReflectionScreen";
-import ProfileScreen from "./screens/ProfileScreen";
+import LoginScreen from "./screens/login/Login/LoginScreen";
+import SignupScreen from "./screens/signup/Signup/SignupScreen";
+import OtpScreen from "./screens/login/OTP/OtpScreen";
+import WelcomeScreen from "./screens/onboarding/Welcome/WelcomeScreen";
+import PocketMoneyScreen from "./screens/onboarding/PocketMoney/PocketMoneyScreen";
+import SavingsGoalScreen from "./screens/onboarding/SavingsGoal/SavingsGoalScreen";
+import OnboardingCompleteScreen from "./screens/onboarding/OnboardingComplete/OnboardingCompleteScreen";
+import DashboardScreen from "./screens/dashboard/Dashboard/DashboardScreen";
+import AddExpenseScreen from "./screens/dashboard/transactions/AddExpense/AddExpenseScreen";
+import ExpenseReflectionScreen from "./screens/dashboard/transactions/ExpenseReflection/ExpenseReflectionScreen";
+import InsightsScreen from "./screens/dashboard/transactions/Insights/InsightsScreen";
+import ProfileScreen from "./screens/dashboard/Profile/ProfileScreen";
+import GoalsScreen from "./screens/dashboard/goals/Goals/GoalsScreen";
+import ConfirmGoalScreen from "./screens/dashboard/goals/GoalConfirmation/ConfirmGoalScreen";
+import AllocationScreen from "./screens/dashboard/goals/GoalAllocation/AllocationScreen";
+import GoalAchievedScreen from "./screens/dashboard/goals/GoalAchieved/GoalAchievedScreen";
 
 
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+function DashboardTabs({ route, navigation }) {
+  const user = route.params?.user || {};
+  const accentColor = "#9D4EDD";
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarShowLabel: true,
+        tabBarHideOnKeyboard: true,
+        tabBarActiveTintColor: accentColor,
+        tabBarInactiveTintColor: "#8A90A8",
+        tabBarStyle: {
+          backgroundColor: "#111210",
+          borderTopWidth: 1,
+          borderTopColor: "rgba(255, 255, 255, 0.08)",
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+          height: 64 + insets.bottom,
+          paddingBottom: insets.bottom,
+          elevation: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.4,
+          shadowRadius: 12,
+          overflow: "hidden",
+        },
+        tabBarItemStyle: {
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          paddingTop: 8,
+          paddingBottom: 8,
+        },
+        tabBarIconStyle: {
+          marginBottom: 0,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: "500",
+          letterSpacing: 0.2,
+          marginTop: 3,
+        },
+        tabBarBackground: () => (
+          <BlurView
+            intensity={80}
+            tint="dark"
+            style={{
+              flex: 1,
+              borderRadius: 24,
+              backgroundColor: "transparent",
+            }}
+          />
+        ),
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={DashboardScreen}
+        initialParams={{ user }}
+        options={{
+          tabBarLabel: "Home",
+          tabBarIcon: ({ color }) => <Feather name="home" size={20} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Goals"
+        component={GoalsScreen}
+        initialParams={{ user }}
+        options={{
+          tabBarLabel: "Goals",
+          tabBarIcon: ({ color }) => <Feather name="target" size={20} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="AddExpenseTab"
+        component={View}
+        options={{
+          tabBarLabel: "",
+          tabBarItemStyle: {
+            justifyContent: "flex-start",
+            alignItems: "center",
+            paddingTop: 12,
+            paddingBottom: 0,
+          },
+          tabBarIcon: () => (
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: accentColor,
+              justifyContent: "center",
+              alignItems: "center",
+              ...Platform.select({
+                ios: {
+                  shadowColor: accentColor,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.5,
+                  shadowRadius: 8,
+                },
+                android: {
+                  elevation: 6,
+                },
+              }),
+            }}>
+              <Feather name="plus" size={22} color="#FFFFFF" />
+            </View>
+          ),
+        }}
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate("AddExpense", { user });
+          },
+        }}
+      />
+      <Tab.Screen
+        name="Insights"
+        component={InsightsScreen}
+        initialParams={{ user }}
+        options={{
+          tabBarLabel: "Insights",
+          tabBarIcon: ({ color }) => <Feather name="bar-chart-2" size={20} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        initialParams={{ user }}
+        options={{
+          tabBarLabel: "Profile",
+          tabBarIcon: ({ color }) => <Feather name="user" size={20} color={color} />,
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
 
 const darkTheme = {
   ...DefaultTheme,
@@ -43,8 +186,8 @@ export default function App() {
 
   useEffect(() => {
     if (Platform.OS === "android") {
-      NavigationBar.setPositionAsync("absolute");
-      NavigationBar.setBackgroundColorAsync("transparent");
+      NavigationBar.setPositionAsync("relative");
+      NavigationBar.setBackgroundColorAsync("#111210");
       NavigationBar.setButtonStyleAsync("light");
     }
   }, []);
@@ -70,18 +213,14 @@ export default function App() {
   useEffect(() => {
     const checkSession = async () => {
       try {
+        const token = await getToken();
         const sessionStr = await AsyncStorage.getItem("userSession");
-        if (sessionStr) {
+        if (token && sessionStr) {
           const cachedUser = JSON.parse(sessionStr);
-          if (cachedUser && cachedUser.id) {
+          if (cachedUser) {
             // Attempt to verify and get latest data from backend
             try {
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
-              const response = await fetch(`${API_BASE_URL}/get_onboarding?userId=${cachedUser.id}`, {
-                signal: controller.signal
-              });
-              clearTimeout(timeoutId);
+              const response = await apiFetch("/get_onboarding");
               const data = await response.json();
               if (response.ok && data && data.onboarding) {
                 // User is valid, update onboarding info and set route
@@ -94,15 +233,11 @@ export default function App() {
                 await AsyncStorage.setItem("userSession", JSON.stringify(updatedUser));
                 setInitialUser(updatedUser);
                 setInitialRoute("Dashboard");
-              } else if (response.status === 404) {
-                if (!cachedUser.onboardingCompleted) {
-                  setInitialUser(cachedUser);
-                  setInitialRoute("Welcome");
-                } else {
-                  // User no longer exists in DB - security checkout
-                  await AsyncStorage.removeItem("userSession");
-                  setInitialRoute("Login");
-                }
+              } else if (response.status === 401 || response.status === 404) {
+                // Token expired/invalidated - security checkout
+                await removeToken();
+                await AsyncStorage.removeItem("userSession");
+                setInitialRoute("Login");
               } else {
                 // Keep local cache if server is having other issues
                 setInitialUser(cachedUser);
@@ -123,8 +258,8 @@ export default function App() {
             }
           }
         }
-      } catch (err) {
-        console.log("Error verifying persisted session:", err);
+      } catch {
+        // Fall through to the login screen when persisted session data cannot be read.
       } finally {
         setCheckingSession(false);
       }
@@ -193,13 +328,8 @@ export default function App() {
 
         <Stack.Screen
           name="Dashboard"
-          component={DashboardScreen}
+          component={DashboardTabs}
           initialParams={initialRoute === "Dashboard" ? { user: initialUser } : undefined}
-        />
-
-        <Stack.Screen
-          name="Goals"
-          component={GoalsScreen}
         />
 
         <Stack.Screen
@@ -216,20 +346,12 @@ export default function App() {
           component={GoalAchievedScreen}
         />
         <Stack.Screen
-          name="Insights"
-          component={InsightsScreen}
-        />
-        <Stack.Screen
           name="AddExpense"
           component={AddExpenseScreen}
         />
         <Stack.Screen
           name="Impact"
           component={ExpenseReflectionScreen}
-        />
-        <Stack.Screen
-          name="Profile"
-          component={ProfileScreen}
         />
         </Stack.Navigator>
       </NavigationContainer>

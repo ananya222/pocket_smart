@@ -1,0 +1,22 @@
+import React from 'react';
+import { View, TextInput } from 'react-native';
+import { getStyles } from './MerchantInput.styles';
+
+export default function MerchantInput({ merchant, setMerchant, isSmallDevice }) {
+  const styles = getStyles(isSmallDevice);
+
+  return (
+    <View style={styles.formContainer}>
+      <View style={styles.inputRow}>
+        <TextInput
+          style={styles.inputRowField}
+          placeholder="Merchant name"
+          placeholderTextColor="rgba(255, 255, 255, 0.2)"
+          value={merchant}
+          onChangeText={setMerchant}
+          maxLength={30}
+        />
+      </View>
+    </View>
+  );
+}

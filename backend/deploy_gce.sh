@@ -3,6 +3,8 @@
 
 set -e
 
+: "${DB_PASSWORD:?Set DB_PASSWORD before running this deployment script.}"
+
 echo "=== PocketSmart GCE VM Auto-Deploy Script ==="
 
 # 1. Update system packages
@@ -20,7 +22,7 @@ sudo systemctl enable mysql
 
 # Create database and user
 sudo mysql -e "CREATE DATABASE IF NOT EXISTS pocketsmart;"
-sudo mysql -e "CREATE USER IF NOT EXISTS 'root'@'localhost' IDENTIFIED BY 'Home@2024';"
+sudo mysql -e "CREATE USER IF NOT EXISTS 'root'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';"
 sudo mysql -e "GRANT ALL PRIVILEGES ON pocketsmart.* TO 'root'@'localhost';"
 sudo mysql -e "FLUSH PRIVILEGES;"
 

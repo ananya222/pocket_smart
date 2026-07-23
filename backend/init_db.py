@@ -2,14 +2,22 @@
 import mysql.connector
 import json
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_USER = os.getenv("DB_USER", "root")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+DB_NAME = os.getenv("DB_NAME", "pocketsmart")
 
 # Database connection helper
 def get_db():
     return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="Home@2024",
-        database="pocketsmart"
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME,
     )
 
 # JSON Query Loader
@@ -35,9 +43,9 @@ def initialize_database():
     try:
         # Step 1: Connect to MySQL server (without DB name) to verify/create database
         db = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="Home@2024"
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
         )
         cursor = db.cursor()
         cursor.execute(CREATE_DATABASE_QUERY)
@@ -47,10 +55,10 @@ def initialize_database():
 
         # Step 2: Connect to pocketsmart database and verify/create tables
         db = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="Home@2024",
-            database="pocketsmart"
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME,
         )
         cursor = db.cursor()
 

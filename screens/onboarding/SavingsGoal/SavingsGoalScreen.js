@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiFetch } from "../../../config";
+import { auth, firestore } from "../../../config";
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -139,25 +139,27 @@ export default function SavingsGoalScreen({ navigation, route }) {
       }
       setIsLoading(true);
       try {
-        const response = await apiFetch("/add_goal", {
-          method: "POST",
-          body: JSON.stringify({
-            goalName: searchQuery,
-            targetAmount: targetAmount,
-            timeToReach: timeToReach || 6,
-            goalImage: goalImage,
-            progressAmount: 0,
-            priority: priority
-          })
-        });
-        const data = await response.json();
-        if (response.ok) {
-          navigation.navigate("Dashboard", { user: routeParams.user });
-        } else {
-          Alert.alert("Failed", data.error || "Could not add goal.");
-        }
+        const userUid = routeParams.user?.id || routeParams.user?.userId || auth().currentUser?.uid;
+        if (!userUid) throw new Error("No authenticated user.");
+
+        await firestore()
+          .collection("users")
+          .doc(userUid)
+          .collection("goals")
+          .add({
+            name: searchQuery,
+            target_amount: String(targetAmount),
+            time_to_reach: parseInt(String(timeToReach), 10) || 6,
+            progress: 0,
+            priority: parseInt(String(priority), 10) || 3,
+            is_active: 1,
+            created_at: firestore.FieldValue.serverTimestamp()
+          });
+
+        navigation.navigate("Dashboard", { user: routeParams.user });
       } catch (error) {
-        Alert.alert("Network Error", "Could not connect to the server.");
+        console.error("Error creating goal in SavingsGoalScreen:", error);
+        Alert.alert("Failed", "Could not add goal.");
       } finally {
         setIsLoading(false);
       }

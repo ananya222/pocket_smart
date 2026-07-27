@@ -1,4 +1,4 @@
-import { apiFetch } from "../../../../config";
+import { auth, firestore } from "../../../../config";
 import React, { useState } from "react";
 import {
   View,
@@ -60,7 +60,7 @@ export default function GoalAchievedScreen({ navigation, route }) {
     }
 
     const goalsProgress = [
-      { id: parseInt(achievedGoal.id, 10), progress: achievedGoal.target }
+      { id: achievedGoal.id, progress: achievedGoal.target }
     ];
 
     let finalBalance = newAllowance;
@@ -74,7 +74,7 @@ export default function GoalAchievedScreen({ navigation, route }) {
           const splitAmount = Math.round(overflowAmount / remainingGoals.length);
           remainingGoals.forEach(g => {
             const newProg = (g.progressAmount || 0) + splitAmount;
-            goalsProgress.push({ id: parseInt(g.id, 10), progress: newProg });
+            goalsProgress.push({ id: g.id, progress: newProg });
             if (g.name === onboarding.goalName) {
               p1 = newProg;
             } else if (g.id === "2" || g.name === "PS5 Controller") {
@@ -87,7 +87,7 @@ export default function GoalAchievedScreen({ navigation, route }) {
           remainingGoals.forEach(g => {
             const added = g.id === selectedGoalId ? overflowAmount : 0;
             const newProg = (g.progressAmount || 0) + added;
-            goalsProgress.push({ id: parseInt(g.id, 10), progress: newProg });
+            goalsProgress.push({ id: g.id, progress: newProg });
             if (g.name === onboarding.goalName) {
               p1 = newProg;
             } else if (g.id === "2" || g.name === "PS5 Controller") {
@@ -101,20 +101,21 @@ export default function GoalAchievedScreen({ navigation, route }) {
     }
 
     try {
-      const response = await apiFetch("/update_allowance_savings", {
-        method: "POST",
-        body: JSON.stringify({
-          savingsProgressAmount: p1,
-          currentBalance: finalBalance,
-          savingsProgress2: p2,
-          savingsProgress3: p3,
-          goalsProgress: goalsProgress,
-        }),
-      });
+      const userUid = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+      if (userUid) {
+        // 1. Update user's current balance
+        await firestore().collection("users").doc(userUid).update({
+          "onboarding.current_balance": String(finalBalance)
+        });
 
-      const data = await response.json();
+        // 2. Update progress for each goal
+        const goalsRef = firestore().collection("users").doc(userUid).collection("goals");
+        for (const gp of goalsProgress) {
+          await goalsRef.doc(String(gp.id)).update({
+            progress: gp.progress
+          });
+        }
 
-      if (response.ok) {
         const updatedUser = {
           ...user,
           onboarding: {
@@ -131,10 +132,11 @@ export default function GoalAchievedScreen({ navigation, route }) {
           showUpdateGoalAlert: false,
         });
       } else {
-        Alert.alert("Error", data.error || "Failed to update savings.");
+        Alert.alert("Error", "No authenticated user session found.");
       }
     } catch (error) {
-      Alert.alert("Connection Error", "Could not connect to the backend server.");
+      console.error("Error updating achievements in Firestore:", error);
+      Alert.alert("Error", "Failed to update savings.");
     } finally {
       setIsUpdating(false);
     }

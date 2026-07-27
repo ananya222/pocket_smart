@@ -1,4 +1,4 @@
-import { apiFetch } from "../../../../config";
+import { auth, firestore } from "../../../../config";
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -136,7 +136,7 @@ export default function AllocationScreen({ navigation, route }) {
         const splitAmount = Math.round(savedAmount / splitCount);
         activeAllocationGoals.forEach(g => {
           goalsProgress.push({
-            id: parseInt(g.id, 10),
+            id: g.id,
             progress: (g.progressAmount || 0) + splitAmount
           });
         });
@@ -144,7 +144,7 @@ export default function AllocationScreen({ navigation, route }) {
         const targetGoal = goals.find(g => g.id === selectedGoalId);
         if (targetGoal) {
           goalsProgress.push({
-            id: parseInt(selectedGoalId, 10),
+            id: selectedGoalId,
             progress: (targetGoal.progressAmount || 0) + savedAmount
           });
         }
@@ -155,24 +155,24 @@ export default function AllocationScreen({ navigation, route }) {
     const finalBalance = activeAllocationGoals.length === 0 ? newAllowance + savedAmount : newAllowance;
 
     try {
-      const response = await apiFetch("/update_allowance_savings", {
-        method: "POST",
-        body: JSON.stringify({
-          savingsProgressAmount: newSavingsProgress1,
-          currentBalance: finalBalance,
-          savingsProgress2: newSavingsProgress2,
-          savingsProgress3: newSavingsProgress3,
-          goalsProgress: goalsProgress,
-          allowance: newAllowance,
-          frequency: newFrequency || onboarding.frequency,
-          cycleLimit: finalBalance
-        }),
-      });
+      const userUid = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+      if (userUid) {
+        // 1. Update user's current balance, allowance, frequency, and cycle limit
+        await firestore().collection("users").doc(userUid).update({
+          "onboarding.current_balance": String(finalBalance),
+          "onboarding.allowance_amount": String(newAllowance),
+          "onboarding.allowance_frequency": newFrequency || onboarding.frequency,
+          "onboarding.cycle_limit": String(finalBalance)
+        });
 
-      const data = await response.json();
+        // 2. Update progress for each goal
+        const goalsRef = firestore().collection("users").doc(userUid).collection("goals");
+        for (const gp of goalsProgress) {
+          await goalsRef.doc(String(gp.id)).update({
+            progress: gp.progress
+          });
+        }
 
-      if (response.ok) {
-        // Create updated onboarding details for the frontend session
         const updatedUser = {
           ...user,
           onboarding: {
@@ -239,7 +239,7 @@ export default function AllocationScreen({ navigation, route }) {
           setIsSuccessModalVisible(true);
         }
       } else {
-        Alert.alert("Allocation Failed", data.error || "Failed to update savings.");
+        Alert.alert("Allocation Failed", "No authenticated user session found.");
       }
     } catch (error) {
       

@@ -96,6 +96,7 @@ export default function DashboardScreen({ navigation, route }) {
       ...onboardingData,
       currentBalance: cleanNew,
       allowance: cleanNew.toLocaleString("en-IN"),
+      cycleLimit: cleanNew.toLocaleString("en-IN"),
       frequency: tempFrequency
     };
 
@@ -116,7 +117,8 @@ export default function DashboardScreen({ navigation, route }) {
       firestore().collection("users").doc(userUid).update({
         "onboarding.allowance_amount": String(cleanNew),
         "onboarding.allowance_frequency": tempFrequency,
-        "onboarding.current_balance": String(cleanNew)
+        "onboarding.current_balance": String(cleanNew),
+        "onboarding.cycle_limit": String(cleanNew)
       })
       .catch((err) => console.error("Error updating budget in Firestore:", err));
     }
@@ -325,6 +327,7 @@ export default function DashboardScreen({ navigation, route }) {
             allowance: info.allowance_amount || "5,000",
             frequency: info.allowance_frequency || "Monthly",
             currentBalance: info.current_balance !== undefined ? parseFloat(info.current_balance) : 2450,
+            cycleLimit: info.cycle_limit || info.allowance_amount || "5,000",
             savingsProgressAmount: info.savings_progress_amount || 0,
             savingsProgress2: info.savings_progress_2 || 2200,
             savingsProgress3: info.savings_progress_3 || 3000,
@@ -453,7 +456,8 @@ export default function DashboardScreen({ navigation, route }) {
     const nextOnboarding = {
       ...onboardingData,
       currentBalance: newBalance,
-      allowance: newAllowanceLimit.toLocaleString("en-IN")
+      allowance: newAllowanceLimit.toLocaleString("en-IN"),
+      cycleLimit: newAllowanceLimit.toLocaleString("en-IN")
     };
 
     // 1. Optimistic Update (Immediate UI response)
@@ -472,7 +476,8 @@ export default function DashboardScreen({ navigation, route }) {
     if (userId) {
       firestore().collection("users").doc(userId).update({
         "onboarding.current_balance": String(newBalance),
-        "onboarding.allowance_amount": String(newAllowanceLimit)
+        "onboarding.allowance_amount": String(newAllowanceLimit),
+        "onboarding.cycle_limit": String(newAllowanceLimit)
       })
       .catch((err) => console.error("Error updating allowance in Firestore:", err));
     }

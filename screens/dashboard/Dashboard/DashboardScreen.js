@@ -128,7 +128,7 @@ export default function DashboardScreen({ navigation, route }) {
   const [newPassword, setNewPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (!oldPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
       Alert.alert("Input Required", "Please fill in all password fields.");
       return;

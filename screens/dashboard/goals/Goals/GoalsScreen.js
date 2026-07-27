@@ -106,48 +106,38 @@ export default function GoalsScreen({ navigation, route }) {
     return goalsList;
   });
 
-  const fetchGoals = async () => {
-    try {
-      const userUid = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
-      if (!userUid) return;
-
-      const goalsSnap = await firestore()
-        .collection("users")
-        .doc(userUid)
-        .collection("goals")
-        .get();
-
-      const mapped = [];
-      goalsSnap.forEach((doc) => {
-        const g = doc.data();
-        const targetNum = parseFloat(String(g.target_amount).replace(/,/g, "")) || 1000;
-        const progressAmount = parseFloat(String(g.progress || 0).replace(/,/g, "")) || 0;
-        const progressPercent = Math.min(100, Math.round((progressAmount / targetNum) * 100));
-        mapped.push({
-          id: doc.id,
-          name: g.name,
-          target: targetNum,
-          progressAmount: progressAmount,
-          progressPercent: progressPercent,
-          timeLeft: g.time_to_reach 
-            ? `${g.time_to_reach} ${frequency === "Weekly" ? (g.time_to_reach === 1 ? "week" : "weeks") : (g.time_to_reach === 1 ? "month" : "months")} left`
-            : "2 weeks left",
-          iconType: getGoalIconType(g.name),
-          image: g.image_url,
-          isActive: g.is_active === 1
-        });
-      });
-      setDbGoals(mapped);
-    } catch (e) {
-      console.error("Error fetching goals in GoalsScreen:", e);
-    }
-  };
-
   React.useEffect(() => {
-    fetchGoals();
-    const unsubscribe = navigation.addListener("focus", () => {
-      fetchGoals();
-    });
+    const userUid = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+    if (!userUid) return;
+
+    const unsubscribe = firestore()
+      .collection("users")
+      .doc(userUid)
+      .collection("goals")
+      .onSnapshot((goalsSnap) => {
+        const mapped = [];
+        goalsSnap.forEach((doc) => {
+          const g = doc.data();
+          const targetNum = parseFloat(String(g.target_amount).replace(/,/g, "")) || 1000;
+          const progressAmount = parseFloat(String(g.progress || 0).replace(/,/g, "")) || 0;
+          const progressPercent = Math.min(100, Math.round((progressAmount / targetNum) * 100));
+          mapped.push({
+            id: doc.id,
+            name: g.name,
+            target: targetNum,
+            progressAmount: progressAmount,
+            progressPercent: progressPercent,
+            timeLeft: g.time_to_reach 
+              ? `${g.time_to_reach} ${frequency === "Weekly" ? (g.time_to_reach === 1 ? "week" : "weeks") : (g.time_to_reach === 1 ? "month" : "months")} left`
+              : "2 weeks left",
+            iconType: getGoalIconType(g.name),
+            image: g.image_url,
+            isActive: g.is_active === 1
+          });
+        });
+        setDbGoals(mapped);
+      }, (err) => console.error("Error listening to goals changes:", err));
+
     return unsubscribe;
   }, [navigation, user.id]);
 
@@ -170,7 +160,6 @@ export default function GoalsScreen({ navigation, route }) {
                   .collection("goals")
                   .doc(goalId)
                   .delete();
-                fetchGoals();
               }
             } catch (err) {
               console.error(err);

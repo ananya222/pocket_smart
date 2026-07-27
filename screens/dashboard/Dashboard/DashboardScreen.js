@@ -309,172 +309,107 @@ export default function DashboardScreen({ navigation, route }) {
     }
   ]);
 
-  const fetchOnboarding = async () => {
-    try {
-      const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
-      if (!userId) return;
-      
-      const userDoc = await firestore().collection("users").doc(userId).get();
-      if (userDoc.exists) {
-        const userData = userDoc.data();
-        const info = userData.onboarding || {};
-        
-        const mappedOnboarding = {
-          allowance: info.allowance_amount || "5,000",
-          frequency: info.allowance_frequency || "Monthly",
-          currentBalance: info.current_balance !== undefined ? parseFloat(info.current_balance) : 2450,
-          savingsProgressAmount: info.savings_progress_amount || 0,
-          savingsProgress2: info.savings_progress_2 || 2200,
-          savingsProgress3: info.savings_progress_3 || 3000,
-          goalName: info.goal_name || "Savings Goal",
-          targetAmount: info.target_amount || "8,000",
-        };
-
-        setOnboardingData(mappedOnboarding);
-
-        navigation.setParams({
-          user: {
-            ...user,
-            onboarding: mappedOnboarding
-          }
-        });
-        
-        setCurrentBalanceVal(mappedOnboarding.currentBalance);
-        setSavingsProgressVal(parseInt(String(mappedOnboarding.savingsProgressAmount).replace(/[^0-9]/g, ""), 10) || 0);
-        setSavingsProgressVal2(parseInt(String(mappedOnboarding.savingsProgress2).replace(/[^0-9]/g, ""), 10) || 2200);
-        setSavingsProgressVal3(parseInt(String(mappedOnboarding.savingsProgress3).replace(/[^0-9]/g, ""), 10) || 3000);
-      }
-    } catch (e) {
-      console.error("Error fetching onboarding details:", e);
-    }
-  };
-
-  const fetchGoals = async () => {
-    try {
-      const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
-      if (!userId) return;
-      
-      const goalsSnap = await firestore()
-        .collection("users")
-        .doc(userId)
-        .collection("goals")
-        .get();
-        
-      const goalsList = [];
-      goalsSnap.forEach((doc) => {
-        const g = doc.data();
-        const targetNum = parseFloat(String(g.target_amount).replace(/,/g, "")) || 1000;
-        const progressAmount = parseFloat(String(g.progress).replace(/,/g, "")) || 0;
-        const progressPercent = Math.min(100, Math.round((progressAmount / targetNum) * 100));
-        
-        goalsList.push({
-          id: doc.id,
-          name: g.name,
-          target: targetNum,
-          progressAmount: progressAmount,
-          progressPercent: progressPercent,
-          timeLeft: g.time_to_reach 
-            ? `${g.time_to_reach} ${frequency === "Weekly" ? (g.time_to_reach === 1 ? "week" : "weeks") : (g.time_to_reach === 1 ? "month" : "months")} left`
-            : "2 weeks left",
-          iconType: getSelectedIcon(g.name),
-          image: g.image_url,
-          isActive: g.is_active === 1,
-          priority: g.priority !== undefined && g.priority !== null ? parseInt(String(g.priority), 10) : 3
-        });
-      });
-
-      const sorted = goalsList.sort((a, b) => {
-        if (a.priority !== b.priority) {
-          return a.priority - b.priority;
-        }
-        if (a.target !== b.target) {
-          return b.target - a.target;
-        }
-        return a.name.localeCompare(b.name);
-      });
-
-      setDbGoals(sorted);
-    } catch (e) {
-      console.error("Error fetching goals:", e);
-    }
-  };
-
-  const fetchTransactions = async () => {
-    try {
-      const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
-      if (!userId) return;
-      
-      const txSnap = await firestore()
-        .collection("users")
-        .doc(userId)
-        .collection("transactions")
-        .orderBy("created_at", "desc")
-        .get();
-        
-      const txList = [];
-      txSnap.forEach((doc) => {
-        const tx = doc.data();
-        txList.push({
-          id: doc.id,
-          title: tx.title,
-          category: tx.category,
-          amount: parseFloat(tx.amount) || 0,
-          date: tx.date,
-          icon: tx.icon,
-          monthLabel: tx.monthLabel,
-          avoidable: tx.avoidable,
-          reason: tx.reason
-        });
-      });
-      setDbTransactions(txList);
-    } catch (e) {
-      console.error("Error fetching transactions:", e);
-    }
-  };
-
   React.useEffect(() => {
-    const syncRouteParams = () => {
-      if (route.params?.user) {
-        const updatedOnboarding = route.params.user.onboarding || {};
-        setOnboardingData(updatedOnboarding);
-        
-        const dbBal = updatedOnboarding.currentBalance;
-        if (dbBal !== undefined && dbBal !== null) {
-          const parsed = parseFloat(String(dbBal).replace(/,/g, ""));
-          setCurrentBalanceVal(!isNaN(parsed) ? parsed : 2450);
+    const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+    if (!userId) return;
+
+    // 1. Listen to Onboarding / Profile changes
+    const unsubOnboarding = firestore()
+      .collection("users")
+      .doc(userId)
+      .onSnapshot((doc) => {
+        if (doc.exists) {
+          const userData = doc.data();
+          const info = userData.onboarding || {};
+          const mappedOnboarding = {
+            allowance: info.allowance_amount || "5,000",
+            frequency: info.allowance_frequency || "Monthly",
+            currentBalance: info.current_balance !== undefined ? parseFloat(info.current_balance) : 2450,
+            savingsProgressAmount: info.savings_progress_amount || 0,
+            savingsProgress2: info.savings_progress_2 || 2200,
+            savingsProgress3: info.savings_progress_3 || 3000,
+            goalName: info.goal_name || "Savings Goal",
+            targetAmount: info.target_amount || "8,000",
+          };
+          setOnboardingData(mappedOnboarding);
+          setCurrentBalanceVal(mappedOnboarding.currentBalance);
+          setSavingsProgressVal(parseInt(String(mappedOnboarding.savingsProgressAmount).replace(/[^0-9]/g, ""), 10) || 0);
+          setSavingsProgressVal2(parseInt(String(mappedOnboarding.savingsProgress2).replace(/[^0-9]/g, ""), 10) || 2200);
+          setSavingsProgressVal3(parseInt(String(mappedOnboarding.savingsProgress3).replace(/[^0-9]/g, ""), 10) || 3000);
         }
-        
-        const dbProgress1 = updatedOnboarding.savingsProgressAmount;
-        if (dbProgress1 !== undefined && dbProgress1 !== null) {
-          setSavingsProgressVal(parseInt(String(dbProgress1).replace(/[^0-9]/g, ""), 10) || 0);
-        }
-        
-        const dbProgress2 = updatedOnboarding.savingsProgress2;
-        if (dbProgress2 !== undefined && dbProgress2 !== null) {
-          setSavingsProgressVal2(parseInt(String(dbProgress2).replace(/[^0-9]/g, ""), 10) || 2200);
-        }
-        
-        const dbProgress3 = updatedOnboarding.savingsProgress3;
-        if (dbProgress3 !== undefined && dbProgress3 !== null) {
-          setSavingsProgressVal3(parseInt(String(dbProgress3).replace(/[^0-9]/g, ""), 10) || 3000);
-        }
-      }
+      }, (err) => console.error("Error listening to onboarding changes:", err));
+
+    // 2. Listen to Goals changes
+    const unsubGoals = firestore()
+      .collection("users")
+      .doc(userId)
+      .collection("goals")
+      .onSnapshot((goalsSnap) => {
+        const goalsList = [];
+        goalsSnap.forEach((docSnap) => {
+          const g = docSnap.data();
+          const targetNum = parseFloat(String(g.target_amount).replace(/,/g, "")) || 1000;
+          const progressAmount = parseFloat(String(g.progress || 0).replace(/,/g, "")) || 0;
+          const progressPercent = Math.min(100, Math.round((progressAmount / targetNum) * 100));
+          
+          goalsList.push({
+            id: docSnap.id,
+            name: g.name,
+            target: targetNum,
+            progressAmount: progressAmount,
+            progressPercent: progressPercent,
+            timeLeft: g.time_to_reach 
+              ? `${g.time_to_reach} ${frequency === "Weekly" ? (g.time_to_reach === 1 ? "week" : "weeks") : (g.time_to_reach === 1 ? "month" : "months")} left`
+              : "2 weeks left",
+            iconType: getSelectedIcon(g.name),
+            image: g.image_url,
+            isActive: g.is_active === 1,
+            priority: g.priority !== undefined && g.priority !== null ? parseInt(String(g.priority), 10) : 3
+          });
+        });
+
+        const sorted = goalsList.sort((a, b) => {
+          if (a.priority !== b.priority) {
+            return a.priority - b.priority;
+          }
+          if (a.target !== b.target) {
+            return b.target - a.target;
+          }
+          return a.name.localeCompare(b.name);
+        });
+        setDbGoals(sorted);
+      }, (err) => console.error("Error listening to goals changes:", err));
+
+    // 3. Listen to Transactions changes
+    const unsubTransactions = firestore()
+      .collection("users")
+      .doc(userId)
+      .collection("transactions")
+      .orderBy("created_at", "desc")
+      .onSnapshot((txSnap) => {
+        const txList = [];
+        txSnap.forEach((docSnap) => {
+          const tx = docSnap.data();
+          txList.push({
+            id: docSnap.id,
+            title: tx.title,
+            category: tx.category,
+            amount: parseFloat(tx.amount) || 0,
+            date: tx.date,
+            icon: tx.icon,
+            monthLabel: tx.monthLabel,
+            avoidable: tx.avoidable,
+            reason: tx.reason
+          });
+        });
+        setDbTransactions(txList);
+      }, (err) => console.error("Error listening to transactions changes:", err));
+
+    return () => {
+      unsubOnboarding();
+      unsubGoals();
+      unsubTransactions();
     };
-
-    // Run on initial mount
-    syncRouteParams();
-    fetchOnboarding();
-    fetchGoals();
-    fetchTransactions();
-
-    const unsubscribe = navigation.addListener("focus", () => {
-      // Run on focus (returning from other screens)
-      syncRouteParams();
-      fetchOnboarding();
-      fetchGoals();
-      fetchTransactions();
-    });
-    return unsubscribe;
   }, [navigation, user.id]);
 
   const activeCarouselGoals = dbGoals.filter(g => g.progressPercent < 100);
@@ -496,7 +431,6 @@ export default function DashboardScreen({ navigation, route }) {
         "onboarding.last_refreshed": firestore.FieldValue.serverTimestamp()
       });
       Alert.alert("Success", "Simulated cycle end. Refreshing dashboard...");
-      fetchOnboarding();
     } catch (err) {
       console.error(err);
       Alert.alert("Error", "Failed to simulate rollover");

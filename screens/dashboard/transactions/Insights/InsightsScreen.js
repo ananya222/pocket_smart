@@ -80,44 +80,34 @@ export default function InsightsScreen({ navigation, route }) {
   const accentColor = "#9D4EDD";
   const [dbTransactions, setDbTransactions] = useState([]);
 
-  const fetchTransactions = async () => {
-    try {
-      const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
-      if (!userId) return;
-
-      const txSnap = await firestore()
-        .collection("users")
-        .doc(userId)
-        .collection("transactions")
-        .orderBy("created_at", "desc")
-        .get();
-
-      const txList = [];
-      txSnap.forEach((doc) => {
-        const tx = doc.data();
-        txList.push({
-          id: doc.id,
-          title: tx.title,
-          category: tx.category,
-          amount: parseFloat(tx.amount) || 0,
-          date: tx.date,
-          icon: tx.icon,
-          monthLabel: tx.monthLabel,
-          avoidable: tx.avoidable,
-          reason: tx.reason
-        });
-      });
-      setDbTransactions(txList);
-    } catch (e) {
-      console.error("Error fetching transactions in InsightsScreen:", e);
-    }
-  };
-
   React.useEffect(() => {
-    fetchTransactions();
-    const unsubscribe = navigation.addListener("focus", () => {
-      fetchTransactions();
-    });
+    const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+    if (!userId) return;
+
+    const unsubscribe = firestore()
+      .collection("users")
+      .doc(userId)
+      .collection("transactions")
+      .orderBy("created_at", "desc")
+      .onSnapshot((txSnap) => {
+        const txList = [];
+        txSnap.forEach((doc) => {
+          const tx = doc.data();
+          txList.push({
+            id: doc.id,
+            title: tx.title,
+            category: tx.category,
+            amount: parseFloat(tx.amount) || 0,
+            date: tx.date,
+            icon: tx.icon,
+            monthLabel: tx.monthLabel,
+            avoidable: tx.avoidable,
+            reason: tx.reason
+          });
+        });
+        setDbTransactions(txList);
+      }, (err) => console.error("Error listening to transactions changes:", err));
+
     return unsubscribe;
   }, [navigation, user.id]);
 

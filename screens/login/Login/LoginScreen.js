@@ -1,5 +1,5 @@
-import { API_BASE_URL, saveToken } from "../../../config";
-import React, { useState, useRef, useEffect } from "react";
+// LoginScreen.js
+import React, { useState, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
@@ -31,10 +31,13 @@ import LoginSocialRow from "./components/LoginSocialRow/LoginSocialRow";
 import LoginFooterActions from "./components/LoginFooterActions/LoginFooterActions";
 import LoginTrustBadge from "./components/LoginTrustBadge/LoginTrustBadge";
 
+import { auth, firestore } from "../../../config";
+
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [keepLoggedIn, setKeepLoggedIn] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Animated button scale spring values
   const loginScale = useRef(new Animated.Value(1)).current;
@@ -75,7 +78,7 @@ export default function LoginScreen({ navigation }) {
 
   const handleDevBypass = async () => {
     const mockUser = {
-      id: 999,
+      id: "dev-bypass-999",
       fullName: "Aarav Sharma",
       email: "aarav@pocketsmart.com",
       phoneNumber: "9876543210",
@@ -101,39 +104,79 @@ export default function LoginScreen({ navigation }) {
       Alert.alert("Error", "Please enter your details");
       return;
     }
+
+    setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        if (data.access_token) {
-          await saveToken(data.access_token);
-        }
-        if (keepLoggedIn) {
-          await AsyncStorage.setItem("userSession", JSON.stringify(data.user));
-        } else {
-          await AsyncStorage.removeItem("userSession");
-        }
-        if (data.user && data.user.onboardingCompleted) {
-          navigation.navigate("Dashboard", { user: data.user });
-        } else {
-          navigation.navigate("Welcome", { user: data.user });
-        }
+      // Sign in with Firebase Authentication
+      const userCredential = await auth().signInWithEmailAndPassword(
+        email.trim(),
+        password.trim()
+      );
+
+      const firebaseUser = userCredential.user;
+
+      // Fetch user profile from Firestore
+      const userDoc = await firestore()
+        .collection("users")
+        .doc(firebaseUser.uid)
+        .get();
+
+      let userProfile = {};
+      if (userDoc.exists) {
+        userProfile = userDoc.data();
+      }
+
+      const user = {
+        id: firebaseUser.uid,
+        fullName: userProfile.fullName || firebaseUser.displayName || "",
+        email: firebaseUser.email,
+        phoneNumber: userProfile.phoneNumber || "",
+        onboardingCompleted: userProfile.onboardingCompleted || false,
+        onboarding: userProfile.onboarding || null,
+      };
+
+      if (keepLoggedIn) {
+        await AsyncStorage.setItem("userSession", JSON.stringify(user));
       } else {
-        Alert.alert("Login Failed", data.error || "Invalid credentials");
+        await AsyncStorage.removeItem("userSession");
+      }
+
+      if (user.onboardingCompleted) {
+        navigation.navigate("Dashboard", { user });
+      } else {
+        navigation.navigate("Welcome", { user });
       }
     } catch (error) {
-      Alert.alert(
-        "Connection Error",
-        "Could not connect to the backend server. Would you like to enter Offline Dev Mode instead?",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Enter Offline Mode", onPress: handleDevBypass },
-        ]
-      );
+      let message = "An unexpected error occurred. Please try again.";
+
+      switch (error.code) {
+        case "auth/user-not-found":
+        case "auth/wrong-password":
+        case "auth/invalid-credential":
+          message = "Incorrect email or password.";
+          break;
+        case "auth/invalid-email":
+          message = "Please enter a valid email address.";
+          break;
+        case "auth/user-disabled":
+          message = "This account has been disabled.";
+          break;
+        case "auth/too-many-requests":
+          message = "Too many failed attempts. Please try again later.";
+          break;
+        case "auth/network-request-failed":
+          message = "No internet connection. Please check your network.";
+          break;
+      }
+
+      Alert.alert("Login Failed", message, [
+        { text: "OK" },
+        ...(error.code === "auth/network-request-failed"
+          ? [{ text: "Enter Offline Mode", onPress: handleDevBypass }]
+          : []),
+      ]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -167,12 +210,14 @@ export default function LoginScreen({ navigation }) {
             <LoginHeader title="Welcome to\nPocketSmart" description="Your complete financial dashboard." />
 
             {/* Email or Username Field */}
-            <Text style={styles.inputLabel}>Email or Username</Text>
+            <Text style={styles.inputLabel}>Email</Text>
             <PremiumInput
               icon="user"
               placeholder="sarah.connor@email.com"
               value={email}
               onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
             />
 
             {/* Password Field */}
@@ -199,6 +244,7 @@ export default function LoginScreen({ navigation }) {
               handlePressOut={handlePressOut}
               loginScale={loginScale}
               loginScaleStyle={loginScaleStyle}
+              loading={loading}
             />
 
             {/* Social Login Row */}

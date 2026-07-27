@@ -1,9 +1,8 @@
-import { API_BASE_URL, saveToken } from "../../../config";
+// SignupScreen.js
 import React, { useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   Alert,
   ScrollView,
@@ -11,7 +10,6 @@ import {
   Platform,
   StatusBar,
   useWindowDimensions,
-  SafeAreaView
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { styles } from "./SignupScreen.styles";
@@ -22,14 +20,17 @@ import SignupButton from "./components/SignupButton/SignupButton";
 import SignupLoginRedirect from "./components/SignupLoginRedirect/SignupLoginRedirect";
 import SignupTrustBadge from "./components/SignupTrustBadge/SignupTrustBadge";
 
+import { auth, firestore } from "../../../config";
+
 export default function SignupScreen({ navigation }) {
   const { height } = useWindowDimensions();
-  
+
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
     if (!fullName.trim() || !phoneNumber.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
@@ -40,30 +41,70 @@ export default function SignupScreen({ navigation }) {
       Alert.alert("Error", "Passwords do not match.");
       return;
     }
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters.");
+      return;
+    }
+
+    setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      // Create user with Firebase Authentication
+      const userCredential = await auth().createUserWithEmailAndPassword(
+        email.trim(),
+        password.trim()
+      );
+
+      const firebaseUser = userCredential.user;
+
+      // Save additional profile data to Firestore
+      await firestore()
+        .collection("users")
+        .doc(firebaseUser.uid)
+        .set({
           fullName: fullName.trim(),
           phoneNumber: phoneNumber.trim(),
           email: email.trim(),
-          password: password.trim(),
-        }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        if (data.access_token) {
-          await saveToken(data.access_token);
-        }
-        Alert.alert("Success", "Account created! Verify your OTP.", [
-          { text: "OK", onPress: () => navigation.navigate("Otp") }
-        ]);
-      } else {
-        Alert.alert("Signup Failed", data.error || "Could not create account.");
-      }
+          onboardingCompleted: false,
+          onboarding: null,
+          createdAt: firestore.FieldValue.serverTimestamp(),
+        });
+
+      const user = {
+        id: firebaseUser.uid,
+        fullName: fullName.trim(),
+        email: email.trim(),
+        phoneNumber: phoneNumber.trim(),
+        onboardingCompleted: false,
+        onboarding: null,
+      };
+
+      // Navigate directly to onboarding — OTP is handled by Firebase email verification (future sprint)
+      navigation.navigate("Welcome", { user });
+
     } catch (error) {
-      Alert.alert("Connection Error", "Could not connect to the server.");
+      let message = "Could not create account. Please try again.";
+
+      switch (error.code) {
+        case "auth/email-already-in-use":
+          message = "An account with this email already exists.";
+          break;
+        case "auth/invalid-email":
+          message = "Please enter a valid email address.";
+          break;
+        case "auth/weak-password":
+          message = "Password is too weak. Use at least 6 characters.";
+          break;
+        case "auth/network-request-failed":
+          message = "No internet connection. Please check your network.";
+          break;
+        case "auth/operation-not-allowed":
+          message = "Email/password sign-up is not enabled. Contact support.";
+          break;
+      }
+
+      Alert.alert("Signup Failed", message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -89,7 +130,7 @@ export default function SignupScreen({ navigation }) {
 
           {/* Signup Form Card */}
           <BlurView intensity={100} tint="dark" style={styles.card}>
-            
+
             <Text style={styles.inputLabel}>Full Name</Text>
             <PremiumInput
               icon="user"
@@ -114,6 +155,7 @@ export default function SignupScreen({ navigation }) {
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
+              autoCapitalize="none"
             />
 
             <Text style={styles.inputLabel}>Password</Text>
@@ -135,7 +177,7 @@ export default function SignupScreen({ navigation }) {
             />
 
             {/* Signup Button */}
-            <SignupButton onPress={handleSignup} />
+            <SignupButton onPress={handleSignup} loading={loading} />
 
             {/* Login redirect */}
             <SignupLoginRedirect onLoginPress={() => navigation.navigate("Login")} />

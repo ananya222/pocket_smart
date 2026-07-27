@@ -1,49 +1,31 @@
 // config.js
-// Centralized configuration for the app.
-// Change this URL to your public ngrok URL (e.g., "https://frolic-capably-wasp.ngrok-free.app") when sharing with external testers.
-export const API_BASE_URL = "https://frolic-capably-wasp.ngrok-free.dev";
+// Centralised Firebase exports — single import point for the rest of the app.
+// The backend (Flask/MySQL) has been fully replaced by Firebase.
 
-import * as SecureStore from "expo-secure-store";
+export { auth, firestore } from './firebase';
 
-const TOKEN_KEY = "user_jwt_token";
+// ---------------------------------------------------------------------------
+// DEPRECATED STUBS — kept temporarily so screens not yet migrated to Firebase
+// do not crash at import time. Remove each stub once its screen is migrated.
+// ---------------------------------------------------------------------------
 
-export async function saveToken(token) {
-  try {
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
-  } catch (error) {
-    console.error("Error saving token", error);
-  }
-}
+/** @deprecated Backend removed. Migrate screen to Firestore. */
+export const API_BASE_URL = null;
 
-export async function getToken() {
-  try {
-    return await SecureStore.getItemAsync(TOKEN_KEY);
-  } catch (error) {
-    console.error("Error getting token", error);
-    return null;
-  }
-}
+/** @deprecated Token management is now handled by Firebase Auth automatically. */
+export async function saveToken() {}
 
-export async function removeToken() {
-  try {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
-  } catch (error) {
-    console.error("Error removing token", error);
-  }
-}
+/** @deprecated Token management is now handled by Firebase Auth automatically. */
+export async function getToken() { return null; }
 
-export async function apiFetch(endpoint, options = {}) {
-  const token = await getToken();
-  const headers = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  const url = endpoint.startsWith("http") ? endpoint : `${API_BASE_URL}${endpoint}`;
-  return fetch(url, {
-    ...options,
-    headers,
-  });
+/** @deprecated Token management is now handled by Firebase Auth automatically. */
+export async function removeToken() {}
+
+/** @deprecated Backend removed. Migrate this screen's data fetching to Firestore. */
+export async function apiFetch(endpoint) {
+  console.warn(
+    `[config.js] apiFetch("${endpoint}") was called but the Flask backend has been removed. ` +
+    'Migrate this screen to Firestore.'
+  );
+  throw new Error('Backend removed. Please migrate to Firebase/Firestore.');
 }

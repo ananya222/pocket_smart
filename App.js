@@ -8,8 +8,7 @@ import { View, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import * as NavigationBar from "expo-navigation-bar";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { apiFetch, getToken, removeToken } from "./config";
+import { auth, firestore } from "./config";
 
 import LoginScreen from "./screens/login/Login/LoginScreen";
 import SignupScreen from "./screens/signup/Signup/SignupScreen";
@@ -211,63 +210,50 @@ export default function App() {
   });
 
   useEffect(() => {
-    const checkSession = async () => {
+    if (!fontsLoaded) return;
+
+    // Firebase Auth persists the session automatically.
+    // onAuthStateChanged fires once on startup with the current user (or null).
+    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
       try {
-        const token = await getToken();
-        const sessionStr = await AsyncStorage.getItem("userSession");
-        if (token && sessionStr) {
-          const cachedUser = JSON.parse(sessionStr);
-          if (cachedUser) {
-            // Attempt to verify and get latest data from backend
-            try {
-              const response = await apiFetch("/get_onboarding");
-              const data = await response.json();
-              if (response.ok && data && data.onboarding) {
-                // User is valid, update onboarding info and set route
-                const updatedUser = {
-                  ...cachedUser,
-                  onboardingCompleted: true,
-                  onboarding: data.onboarding
-                };
-                // Save fresh credentials back to storage
-                await AsyncStorage.setItem("userSession", JSON.stringify(updatedUser));
-                setInitialUser(updatedUser);
-                setInitialRoute("Dashboard");
-              } else if (response.status === 401 || response.status === 404) {
-                // Token expired/invalidated - security checkout
-                await removeToken();
-                await AsyncStorage.removeItem("userSession");
-                setInitialRoute("Login");
-              } else {
-                // Keep local cache if server is having other issues
-                setInitialUser(cachedUser);
-                if (cachedUser.onboardingCompleted) {
-                  setInitialRoute("Dashboard");
-                } else {
-                  setInitialRoute("Welcome");
-                }
-              }
-            } catch (apiErr) {
-              // Server is offline, fallback to locally cached session
-              setInitialUser(cachedUser);
-              if (cachedUser.onboardingCompleted) {
-                setInitialRoute("Dashboard");
-              } else {
-                setInitialRoute("Welcome");
-              }
-            }
+        if (firebaseUser) {
+          // User is signed in — fetch their profile from Firestore
+          const userDoc = await firestore()
+            .collection("users")
+            .doc(firebaseUser.uid)
+            .get();
+
+          let userProfile = {};
+          if (userDoc.exists) {
+            userProfile = userDoc.data();
           }
+
+          const user = {
+            id: firebaseUser.uid,
+            fullName: userProfile.fullName || firebaseUser.displayName || "",
+            email: firebaseUser.email,
+            phoneNumber: userProfile.phoneNumber || "",
+            onboardingCompleted: userProfile.onboardingCompleted || false,
+            onboarding: userProfile.onboarding || null,
+          };
+
+          setInitialUser(user);
+          setInitialRoute(user.onboardingCompleted ? "Dashboard" : "Welcome");
+        } else {
+          // No signed-in user — go to Login
+          setInitialRoute("Login");
         }
-      } catch {
-        // Fall through to the login screen when persisted session data cannot be read.
+      } catch (err) {
+        // Firestore read failed (e.g. offline) — fall back to Login
+        console.warn("Session restore failed:", err);
+        setInitialRoute("Login");
       } finally {
         setCheckingSession(false);
       }
-    };
-    
-    if (fontsLoaded) {
-      checkSession();
-    }
+    });
+
+    // Unsubscribe the listener when the effect is cleaned up
+    return unsubscribe;
   }, [fontsLoaded]);
 
   if (!fontsLoaded || checkingSession) {

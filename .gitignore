@@ -27,3 +27,8 @@ env/
 backend/database_preview.md
 *.db
 *.sqlite
+
+# Firebase Configuration / Keys
+google-services.json
+firebase.js
+

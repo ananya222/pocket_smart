@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiFetch } from "../../../config";
+import { auth, firestore } from "../../../config";
 import React, { useRef } from "react";
 import {
   View,
@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import BackgroundGrid from "../../../components/BackgroundGrid/BackgroundGrid";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { styles } from "./OnboardingCompleteScreen.styles";
 import OnboardingProfileCard from "./components/OnboardingProfileCard";
 import OnboardingProceedButton from "./components/OnboardingProceedButton";
@@ -37,63 +36,63 @@ export default function OnboardingCompleteScreen({ navigation, route }) {
   const cardPaddingBottom = Math.max(24, Math.min(40, height * 0.05));
 
   const handleProceed = async () => {
+    const userUid = routeParams.user?.id || auth().currentUser?.uid;
+    if (!userUid) {
+      Alert.alert("Error", "No authenticated user session found.");
+      return;
+    }
+
     try {
       const cleanAllowance = parseFloat(String(allowance).replace(/,/g, "")) || 5000;
       const cleanTarget = parseFloat(String(targetAmount).replace(/,/g, "")) || 8000;
 
-      const response = await apiFetch("/submit_onboarding", {
-        method: "POST",
-        body: JSON.stringify({
-          allowance: cleanAllowance,
-          frequency: frequency,
-          goalName: goalName,
-          targetAmount: cleanTarget,
-          timeToReach: parseInt(String(timeToReach), 10) || 6,
-          savingsProgressAmount: 0,
-          currentBalance: cleanAllowance,
-          priority: parseInt(String(routeParams.priority || 3), 10) || 3
-        }),
-      });
+      // Keep exact matching names from MySQL 'accounts' table columns
+      const onboardingData = {
+        allowance_amount: String(allowance),
+        allowance_frequency: String(frequency),
+        current_balance: String(cleanAllowance),
+        cycle_limit: String(cleanAllowance),
+        last_refreshed: firestore.FieldValue.serverTimestamp(),
+      };
 
-      if (response.ok) {
-        const updatedUser = {
-          ...routeParams.user,
+      // Write onboarding status and details to the user profile in Firestore
+      await firestore()
+        .collection("users")
+        .doc(userUid)
+        .update({
           onboardingCompleted: true,
-          onboarding: {
-            allowance,
-            frequency,
-            goalName,
-            targetAmount,
-            timeToReach,
-            savingsProgressAmount: 0,
-            currentBalance: cleanAllowance,
-            priority: parseInt(String(routeParams.priority || 3), 10) || 3
-          }
-        };
-        await AsyncStorage.setItem("userSession", JSON.stringify(updatedUser));
-        navigation.navigate("Dashboard", { user: updatedUser });
-      } else {
-        const data = await response.json();
-        Alert.alert("Onboarding Failed", data.error || "Could not save onboarding details.");
-      }
-    } catch (error) {
-      // Fallback for offline testing / development bypass
+          onboarding: onboardingData
+        });
+
+      // Also create their first goal in the goals subcollection matching the 'goals' table columns
+      await firestore()
+        .collection("users")
+        .doc(userUid)
+        .collection("goals")
+        .add({
+          name: goalName,
+          target_amount: String(targetAmount),
+          time_to_reach: parseInt(String(timeToReach), 10) || 6,
+          progress: 0,
+          priority: parseInt(String(routeParams.priority || 3), 10) || 3,
+          is_active: 1,
+          created_at: firestore.FieldValue.serverTimestamp()
+        });
+
+      // Maintain structure for screen navigation context compatibility
       const updatedUser = {
         ...routeParams.user,
         onboardingCompleted: true,
-        onboarding: {
-          allowance,
-          frequency,
-          goalName,
-          targetAmount,
-          timeToReach,
-          savingsProgressAmount: 0,
-          currentBalance: parseFloat(String(allowance).replace(/,/g, "")) || 5000,
-          priority: parseInt(String(routeParams.priority || 3), 10) || 3
-        }
+        onboarding: onboardingData
       };
-      await AsyncStorage.setItem("userSession", JSON.stringify(updatedUser));
+
       navigation.navigate("Dashboard", { user: updatedUser });
+    } catch (error) {
+      console.error("Error saving onboarding details to Firestore:", error);
+      Alert.alert(
+        "Onboarding Failed",
+        "Could not save your setup details. Please check your internet connection and try again."
+      );
     }
   };
 

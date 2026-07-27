@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "my-app",
+    "name": "PocketSmart",
     "slug": "my-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,7 +14,9 @@
         {
           "enforceContrast": false
         }
-      ]
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth"
     ],
     "extra": {
       "expo-navigation-bar": {
@@ -25,8 +27,9 @@
       }
     },
     "android": {
-      "package": "com.pocketsmart.myapp",
-      "backgroundColor": "#111210"
+      "package": "com.pocketsmart.app",
+      "backgroundColor": "#111210",
+      "googleServicesFile": "./google-services.json"
     }
   }
 }

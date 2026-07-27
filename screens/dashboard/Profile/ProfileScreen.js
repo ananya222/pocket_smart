@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiFetch, removeToken } from "../../../config";
+import { auth, firestore } from "../../../config";
 // ProfileScreen.js
 import React, { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -56,42 +56,42 @@ export default function ProfileScreen({ navigation, route }) {
 
   // Fetch live user info, allowance, and goals
   const loadOnboardingAndGoals = async () => {
-    const userId = user.id || user.userId || route.params?.user?.id;
+    const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
     if (!userId) return;
 
     try {
-      // Get Onboarding / Allowance info
-       const onboardingResponse = await apiFetch("/get_onboarding");
-      if (onboardingResponse.ok) {
-        const onboardingData = await onboardingResponse.json();
-        if (onboardingData && onboardingData.onboarding) {
-          const info = onboardingData.onboarding;
-          const rawAllowance = info.allowance || "5,000";
-          setAllowance(parseFloat(String(rawAllowance).replace(/,/g, "")).toLocaleString("en-IN"));
-          setFrequency(info.frequency || "Monthly");
-          
-          const rawBalance = info.currentBalance !== undefined ? info.currentBalance : 0;
-          setBalance(parseFloat(String(rawBalance).replace(/,/g, "")).toLocaleString("en-IN"));
-        }
+      // Get Onboarding / Allowance info from Firestore
+      const userDoc = await firestore().collection("users").doc(userId).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        const info = userData.onboarding || {};
+        const rawAllowance = info.allowance_amount || "5,000";
+        setAllowance(parseFloat(String(rawAllowance).replace(/,/g, "")).toLocaleString("en-IN"));
+        setFrequency(info.allowance_frequency || "Monthly");
+        
+        const rawBalance = info.current_balance !== undefined ? info.current_balance : 0;
+        setBalance(parseFloat(String(rawBalance).replace(/,/g, "")).toLocaleString("en-IN"));
       }
 
-      // Get Goals summary
-      const goalsResponse = await apiFetch("/get_goals");
-      if (goalsResponse.ok) {
-        const goalsData = await goalsResponse.json();
-        if (goalsData && Array.isArray(goalsData.goals)) {
-          setGoalsCount(goalsData.goals.length);
-          let totalSaved = 0;
-          let totalTarget = 0;
-          goalsData.goals.forEach(g => {
-            totalSaved += parseFloat(String(g.progress_amount || 0).replace(/,/g, ""));
-            totalTarget += parseFloat(String(g.target_amount || 0).replace(/,/g, ""));
-          });
-          setGoalsTotalSaved(totalSaved);
-          setGoalsTotalTarget(totalTarget);
-        }
-      }
-    } catch {
+      // Get Goals summary from Firestore
+      const goalsSnap = await firestore()
+        .collection("users")
+        .doc(userId)
+        .collection("goals")
+        .get();
+        
+      setGoalsCount(goalsSnap.size);
+      let totalSaved = 0;
+      let totalTarget = 0;
+      goalsSnap.forEach(doc => {
+        const g = doc.data();
+        totalSaved += parseFloat(String(g.progress || 0).replace(/,/g, ""));
+        totalTarget += parseFloat(String(g.target_amount || 0).replace(/,/g, ""));
+      });
+      setGoalsTotalSaved(totalSaved);
+      setGoalsTotalTarget(totalTarget);
+    } catch (e) {
+      console.error("Error loading onboarding and goals in ProfileScreen:", e);
     }
   };
 
@@ -142,7 +142,7 @@ export default function ProfileScreen({ navigation, route }) {
   };
 
   // Change Password logic
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
       Alert.alert("Error", "Please fill in all fields.");
       return;
@@ -151,38 +151,36 @@ export default function ProfileScreen({ navigation, route }) {
       Alert.alert("Mismatch", "New passwords do not match.");
       return;
     }
-    if (newPassword.length < 4) {
-      Alert.alert("Weak Password", "Password must be at least 4 characters.");
+    if (newPassword.length < 6) {
+      Alert.alert("Weak Password", "Password must be at least 6 characters.");
       return;
     }
 
-    apiFetch("/change_password", {
-      method: "POST",
-      body: JSON.stringify({
-        oldPassword: oldPassword,
-        newPassword: newPassword
-      })
-    })
-    .then(async (response) => {
-      const data = await response.json();
-      if (!response.ok) {
-        Alert.alert("Error", data.error || "Failed to update password.");
-      } else {
+    try {
+      const currentUser = auth().currentUser;
+      if (currentUser) {
+        await currentUser.updatePassword(newPassword);
         Alert.alert("Success", "Password updated successfully!");
         setOldPassword("");
         setNewPassword("");
         setConfirmPassword("");
         setIsPasswordModalVisible(false);
+      } else {
+        Alert.alert("Error", "No authenticated user session found.");
       }
-    })
-    .catch((err) => {
-      Alert.alert("Network Error", "Could not connect to server to update password.");
-    });
+    } catch (error) {
+      console.error(error);
+      let message = "Failed to update password. Please try again.";
+      if (error.code === "auth/requires-recent-login") {
+        message = "For security reasons, changing your password requires logging in again.";
+      }
+      Alert.alert("Error", message);
+    }
   };
 
   const handleLogout = async () => {
     try {
-      await removeToken();
+      await auth().signOut();
       await AsyncStorage.removeItem("userSession");
     } catch {
     }

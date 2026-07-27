@@ -1,4 +1,4 @@
-import { apiFetch } from "../../../../config";
+import { auth, firestore } from "../../../../config";
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -111,32 +111,54 @@ export default function ExpenseReflectionScreen({ navigation, route }) {
 
   const fetchGoals = async () => {
     try {
-      const response = await apiFetch("/get_goals");
-      const data = await response.json();
-      if (response.ok && data.goals) {
-        const active = data.goals.filter(g => {
-          const targetNum = parseFloat(String(g.target_amount).replace(/,/g, "")) || 1000;
-          const isGoalActive = g.is_active === 1;
-          const progressPercent = Math.round((g.progress_amount / targetNum) * 100);
-          return progressPercent < 100 && isGoalActive;
+      const userUid = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+      if (!userUid) return;
+      
+      const goalsSnap = await firestore()
+        .collection("users")
+        .doc(userUid)
+        .collection("goals")
+        .get();
+        
+      const goalsList = [];
+      goalsSnap.forEach((doc) => {
+        const g = doc.data();
+        const targetNum = parseFloat(String(g.target_amount).replace(/,/g, "")) || 1000;
+        const progressAmount = parseFloat(String(g.progress).replace(/,/g, "")) || 0;
+        
+        goalsList.push({
+          ...g,
+          id: doc.id,
+          progress_amount: progressAmount,
+          target_amount: targetNum,
+          is_active: g.is_active
         });
-        const sortedActive = active.sort((a, b) => {
-          const pA = a.priority !== undefined && a.priority !== null ? parseInt(String(a.priority), 10) : 3;
-          const pB = b.priority !== undefined && b.priority !== null ? parseInt(String(b.priority), 10) : 3;
-          if (pA !== pB) {
-            return pA - pB;
-          }
-          const tA = parseFloat(String(a.target_amount).replace(/,/g, "")) || 1000;
-          const tB = parseFloat(String(b.target_amount).replace(/,/g, "")) || 1000;
-          if (tA !== tB) {
-            return tB - tA;
-          }
-          return a.name.localeCompare(b.name);
-        });
-        setActiveGoals(sortedActive);
-        setHasLoadedGoals(true);
-      }
-    } catch {
+      });
+
+      const active = goalsList.filter(g => {
+        const targetNum = parseFloat(String(g.target_amount).replace(/,/g, "")) || 1000;
+        const isGoalActive = g.is_active === 1;
+        const progressPercent = Math.round((g.progress_amount / targetNum) * 100);
+        return progressPercent < 100 && isGoalActive;
+      });
+      
+      const sortedActive = active.sort((a, b) => {
+        const pA = a.priority !== undefined && a.priority !== null ? parseInt(String(a.priority), 10) : 3;
+        const pB = b.priority !== undefined && b.priority !== null ? parseInt(String(b.priority), 10) : 3;
+        if (pA !== pB) {
+          return pA - pB;
+        }
+        const tA = parseFloat(String(a.target_amount).replace(/,/g, "")) || 1000;
+        const tB = parseFloat(String(b.target_amount).replace(/,/g, "")) || 1000;
+        if (tA !== tB) {
+          return tB - tA;
+        }
+        return a.name.localeCompare(b.name);
+      });
+      setActiveGoals(sortedActive);
+      setHasLoadedGoals(true);
+    } catch (e) {
+      console.error("Error fetching goals in reflection:", e);
     }
   };
 
@@ -230,36 +252,32 @@ export default function ExpenseReflectionScreen({ navigation, route }) {
     };
 
     try {
-      const balanceResponse = await apiFetch("/update_allowance_savings", {
-        method: "POST",
-        body: JSON.stringify({
-          savingsProgressAmount: onboarding.savingsProgressAmount || 0,
-          currentBalance: newBalance.toString(),
-          savingsProgress2: onboarding.savingsProgress2 || 2200,
-          savingsProgress3: onboarding.savingsProgress3 || 3000,
-        })
-      });
+      const userUid = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+      if (userUid) {
+        // Update user's wallet balance
+        await firestore().collection("users").doc(userUid).update({
+          "onboarding.current_balance": newBalance.toString()
+        });
 
-      if (!balanceResponse.ok) {
+        // Add transaction document
+        await firestore()
+          .collection("users")
+          .doc(userUid)
+          .collection("transactions")
+          .add({
+            title: merchant,
+            category: category,
+            amount: -expenseAmount,
+            date: formattedDate,
+            icon: activeCategory.icon,
+            monthLabel: monthLabel,
+            avoidable: avoidable,
+            reason: reflectionReason.trim(),
+            created_at: firestore.FieldValue.serverTimestamp()
+          });
       }
-
-      const txResponse = await apiFetch("/add_transaction", {
-        method: "POST",
-        body: JSON.stringify({
-          title: merchant,
-          category: category,
-          amount: -expenseAmount,
-          date: formattedDate,
-          icon: activeCategory.icon,
-          monthLabel: monthLabel,
-          avoidable: avoidable,
-          reason: reflectionReason.trim()
-        })
-      });
-
-      if (!txResponse.ok) {
-      }
-    } catch {
+    } catch (error) {
+      console.error("Error saving transaction reflection:", error);
     } finally {
       setIsFinalizing(false);
       // Navigate to Dashboard with updated user state

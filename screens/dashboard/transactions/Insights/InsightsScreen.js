@@ -1,4 +1,4 @@
-import { apiFetch } from "../../../../config";
+import { auth, firestore } from "../../../../config";
 import React, { useState } from "react";
 import {
   View,
@@ -82,12 +82,34 @@ export default function InsightsScreen({ navigation, route }) {
 
   const fetchTransactions = async () => {
     try {
-      const response = await apiFetch("/get_transactions");
-      const data = await response.json();
-      if (response.ok && data.transactions) {
-        setDbTransactions(data.transactions);
-      }
-    } catch {
+      const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+      if (!userId) return;
+
+      const txSnap = await firestore()
+        .collection("users")
+        .doc(userId)
+        .collection("transactions")
+        .orderBy("created_at", "desc")
+        .get();
+
+      const txList = [];
+      txSnap.forEach((doc) => {
+        const tx = doc.data();
+        txList.push({
+          id: doc.id,
+          title: tx.title,
+          category: tx.category,
+          amount: parseFloat(tx.amount) || 0,
+          date: tx.date,
+          icon: tx.icon,
+          monthLabel: tx.monthLabel,
+          avoidable: tx.avoidable,
+          reason: tx.reason
+        });
+      });
+      setDbTransactions(txList);
+    } catch (e) {
+      console.error("Error fetching transactions in InsightsScreen:", e);
     }
   };
 

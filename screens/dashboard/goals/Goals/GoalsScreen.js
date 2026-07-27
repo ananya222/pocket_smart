@@ -1,4 +1,4 @@
-import { apiFetch } from "../../../../config";
+import { auth, firestore } from "../../../../config";
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -108,29 +108,38 @@ export default function GoalsScreen({ navigation, route }) {
 
   const fetchGoals = async () => {
     try {
-      const response = await apiFetch("/get_goals");
-      const data = await response.json();
-      if (response.ok && data.goals) {
-        const mapped = data.goals.map((g) => {
-          const targetNum = parseFloat(String(g.target_amount).replace(/,/g, "")) || 1000;
-          const progressPercent = Math.min(100, Math.round((g.progress_amount / targetNum) * 100));
-          return {
-            id: String(g.id),
-            name: g.name,
-            target: targetNum,
-            progressAmount: g.progress_amount,
-            progressPercent: progressPercent,
-            timeLeft: g.time_to_reach 
-              ? `${g.time_to_reach} ${frequency === "Weekly" ? (g.time_to_reach === 1 ? "week" : "weeks") : (g.time_to_reach === 1 ? "month" : "months")} left`
-              : "2 weeks left",
-            iconType: getGoalIconType(g.name),
-            image: g.image_url,
-            isActive: g.is_active === 1
-          };
+      const userUid = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+      if (!userUid) return;
+
+      const goalsSnap = await firestore()
+        .collection("users")
+        .doc(userUid)
+        .collection("goals")
+        .get();
+
+      const mapped = [];
+      goalsSnap.forEach((doc) => {
+        const g = doc.data();
+        const targetNum = parseFloat(String(g.target_amount).replace(/,/g, "")) || 1000;
+        const progressAmount = parseFloat(String(g.progress || 0).replace(/,/g, "")) || 0;
+        const progressPercent = Math.min(100, Math.round((progressAmount / targetNum) * 100));
+        mapped.push({
+          id: doc.id,
+          name: g.name,
+          target: targetNum,
+          progressAmount: progressAmount,
+          progressPercent: progressPercent,
+          timeLeft: g.time_to_reach 
+            ? `${g.time_to_reach} ${frequency === "Weekly" ? (g.time_to_reach === 1 ? "week" : "weeks") : (g.time_to_reach === 1 ? "month" : "months")} left`
+            : "2 weeks left",
+          iconType: getGoalIconType(g.name),
+          image: g.image_url,
+          isActive: g.is_active === 1
         });
-        setDbGoals(mapped);
-      }
-    } catch {
+      });
+      setDbGoals(mapped);
+    } catch (e) {
+      console.error("Error fetching goals in GoalsScreen:", e);
     }
   };
 
@@ -153,18 +162,19 @@ export default function GoalsScreen({ navigation, route }) {
           style: "destructive", 
           onPress: async () => {
             try {
-              const response = await apiFetch("/delete_goal", {
-                method: "POST",
-                body: JSON.stringify({ goalId })
-              });
-              const data = await response.json();
-              if (response.ok) {
+              const userUid = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+              if (userUid) {
+                await firestore()
+                  .collection("users")
+                  .doc(userUid)
+                  .collection("goals")
+                  .doc(goalId)
+                  .delete();
                 fetchGoals();
-              } else {
-                Alert.alert("Failed", data.error || "Could not delete goal.");
               }
             } catch (err) {
-              Alert.alert("Error", "Network error. Could not delete goal.");
+              console.error(err);
+              Alert.alert("Error", "Could not delete goal.");
             }
           }
         }

@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiFetch } from "../../../../config";
+import { auth, firestore } from "../../../../config";
 import React, { useState } from "react";
 import {
   View,
@@ -28,19 +28,24 @@ export default function ConfirmGoalScreen({ navigation, route }) {
   const handleConfirm = async () => {
     setIsUpdating(true);
     try {
-      const response = await apiFetch("/update_goal", {
-        method: "POST",
-        body: JSON.stringify({
-          goalName,
-          targetAmount,
-          goalImage,
-          timeToReach,
-        }),
-      });
+      const userUid = user.id || user.userId || auth().currentUser?.uid;
+      if (userUid) {
+        const cleanTarget = parseFloat(String(targetAmount).replace(/,/g, "")) || 8000;
+        
+        await firestore()
+          .collection("users")
+          .doc(userUid)
+          .collection("goals")
+          .add({
+            name: goalName,
+            target_amount: String(cleanTarget),
+            time_to_reach: parseInt(String(timeToReach), 10) || 6,
+            progress: 0,
+            priority: 3,
+            is_active: 1,
+            created_at: firestore.FieldValue.serverTimestamp()
+          });
 
-      const data = await response.json();
-
-      if (response.ok) {
         const updatedUser = {
           ...user,
           onboarding: {
@@ -56,10 +61,11 @@ export default function ConfirmGoalScreen({ navigation, route }) {
           { text: "OK", onPress: () => navigation.navigate("Dashboard", { user: updatedUser }) },
         ]);
       } else {
-        Alert.alert("Update Failed", data.error || "Could not update your goal.");
+        Alert.alert("Update Failed", "No authenticated user session found.");
       }
     } catch (error) {
-      Alert.alert("Network Error", "Could not connect to the server. Please try again.");
+      console.error(error);
+      Alert.alert("Error", "Could not save your goal. Please try again.");
     } finally {
       setIsUpdating(false);
     }

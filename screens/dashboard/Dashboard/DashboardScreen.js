@@ -1,4 +1,4 @@
-import { apiFetch } from "../../../config";
+import { auth, firestore } from "../../../config";
 import React from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -110,25 +110,16 @@ export default function DashboardScreen({ navigation, route }) {
     setOnboardingData(nextOnboarding);
     Alert.alert("Success", "Allowance Configuration updated successfully!");
 
-    // 2. Perform API call in background (non-blocking sync)
-    apiFetch("/update_allowance_savings", {
-      method: "POST",
-      body: JSON.stringify({
-        savingsProgressAmount: savingsProgressVal,
-        currentBalance: cleanNew,
-        savingsProgress2: savingsProgressVal2,
-        savingsProgress3: savingsProgressVal3,
-        allowance: cleanNew,
-        frequency: tempFrequency
+    // 2. Perform Firestore update in background (non-blocking sync)
+    const userUid = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+    if (userUid) {
+      firestore().collection("users").doc(userUid).update({
+        "onboarding.allowance_amount": String(cleanNew),
+        "onboarding.allowance_frequency": tempFrequency,
+        "onboarding.current_balance": String(cleanNew)
       })
-    })
-    .then((response) => {
-      if (!response.ok) {
-      } else {
-      }
-    })
-    .catch((err) => {
-    });
+      .catch((err) => console.error("Error updating budget in Firestore:", err));
+    }
   };
 
   // Change Password Modal States (Mock Mode)
@@ -151,28 +142,26 @@ export default function DashboardScreen({ navigation, route }) {
       return;
     }
 
-    apiFetch("/change_password", {
-      method: "POST",
-      body: JSON.stringify({
-        oldPassword: oldPassword,
-        newPassword: newPassword
-      })
-    })
-    .then(async (response) => {
-      const data = await response.json();
-      if (!response.ok) {
-        Alert.alert("Error", data.error || "Failed to update password.");
-      } else {
+    try {
+      const currentUser = auth().currentUser;
+      if (currentUser) {
+        await currentUser.updatePassword(newPassword);
         Alert.alert("Success", "Password updated successfully!");
         setOldPassword("");
         setNewPassword("");
         setConfirmPassword("");
         setIsPasswordModalVisible(false);
+      } else {
+        Alert.alert("Error", "No authenticated user session found.");
       }
-    })
-    .catch((err) => {
-      Alert.alert("Network Error", "Could not connect to server to update password.");
-    });
+    } catch (error) {
+      console.error(error);
+      let message = "Failed to update password. Please try again.";
+      if (error.code === "auth/requires-recent-login") {
+        message = "For security reasons, changing your password requires logging in again.";
+      }
+      Alert.alert("Error", message);
+    }
   };
 
   // Preferences Toggles & Local Persistence
@@ -322,108 +311,124 @@ export default function DashboardScreen({ navigation, route }) {
 
   const fetchOnboarding = async () => {
     try {
-      const userId = user.id || user.userId || route.params?.user?.id;
+      const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
       if (!userId) return;
-      const response = await apiFetch("/get_onboarding");
-      const data = await response.json();
-      if (response.ok && data.onboarding) {
-        setOnboardingData(data.onboarding);
+      
+      const userDoc = await firestore().collection("users").doc(userId).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        const info = userData.onboarding || {};
+        
+        const mappedOnboarding = {
+          allowance: info.allowance_amount || "5,000",
+          frequency: info.allowance_frequency || "Monthly",
+          currentBalance: info.current_balance !== undefined ? parseFloat(info.current_balance) : 2450,
+          savingsProgressAmount: info.savings_progress_amount || 0,
+          savingsProgress2: info.savings_progress_2 || 2200,
+          savingsProgress3: info.savings_progress_3 || 3000,
+          goalName: info.goal_name || "Savings Goal",
+          targetAmount: info.target_amount || "8,000",
+        };
 
-        // Check for cycle rollover
-        if (data.onboarding.rolloverDue) {
-          navigation.navigate("Allocation", {
-            user: {
-              ...user,
-              onboarding: data.onboarding
-            },
-            savedAmount: data.onboarding.savedAmount || 0,
-            newAllowance: parseFloat(String(data.onboarding.allowance || "5000").replace(/,/g, "")) || 5000,
-            newFrequency: data.onboarding.frequency || "Monthly",
-            goals: data.onboarding.goals || []
-          });
-          return;
-        }
+        setOnboardingData(mappedOnboarding);
 
         navigation.setParams({
           user: {
             ...user,
-            onboarding: data.onboarding
+            onboarding: mappedOnboarding
           }
         });
-        const dbBal = data.onboarding.currentBalance;
-        if (dbBal !== undefined && dbBal !== null) {
-          const parsed = parseFloat(String(dbBal).replace(/,/g, ""));
-          setCurrentBalanceVal(!isNaN(parsed) ? parsed : 2450);
-        }
-        const dbProgress1 = data.onboarding.savingsProgressAmount;
-        if (dbProgress1 !== undefined && dbProgress1 !== null) {
-          setSavingsProgressVal(parseInt(String(dbProgress1).replace(/[^0-9]/g, ""), 10) || 0);
-        }
-        const dbProgress2 = data.onboarding.savingsProgress2;
-        if (dbProgress2 !== undefined && dbProgress2 !== null) {
-          setSavingsProgressVal2(parseInt(String(dbProgress2).replace(/[^0-9]/g, ""), 10) || 2200);
-        }
-        const dbProgress3 = data.onboarding.savingsProgress3;
-        if (dbProgress3 !== undefined && dbProgress3 !== null) {
-          setSavingsProgressVal3(parseInt(String(dbProgress3).replace(/[^0-9]/g, ""), 10) || 3000);
-        }
+        
+        setCurrentBalanceVal(mappedOnboarding.currentBalance);
+        setSavingsProgressVal(parseInt(String(mappedOnboarding.savingsProgressAmount).replace(/[^0-9]/g, ""), 10) || 0);
+        setSavingsProgressVal2(parseInt(String(mappedOnboarding.savingsProgress2).replace(/[^0-9]/g, ""), 10) || 2200);
+        setSavingsProgressVal3(parseInt(String(mappedOnboarding.savingsProgress3).replace(/[^0-9]/g, ""), 10) || 3000);
       }
-    } catch {
+    } catch (e) {
+      console.error("Error fetching onboarding details:", e);
     }
   };
 
   const fetchGoals = async () => {
     try {
-      const userId = user.id || user.userId || route.params?.user?.id;
+      const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
       if (!userId) return;
-      const response = await apiFetch("/get_goals");
-      const data = await response.json();
-      if (response.ok && data.goals) {
-        const mapped = data.goals.map((g) => {
-          const targetNum = parseFloat(String(g.target_amount).replace(/,/g, "")) || 1000;
-          const progressPercent = Math.min(100, Math.round((g.progress_amount / targetNum) * 100));
-          return {
-            id: String(g.id),
-            name: g.name,
-            target: targetNum,
-            progressAmount: g.progress_amount,
-            progressPercent: progressPercent,
-            timeLeft: g.time_to_reach 
-              ? `${g.time_to_reach} ${frequency === "Weekly" ? (g.time_to_reach === 1 ? "week" : "weeks") : (g.time_to_reach === 1 ? "month" : "months")} left`
-              : "2 weeks left",
-            iconType: getSelectedIcon(g.name),
-            image: g.image_url,
-            isActive: g.is_active === 1,
-            priority: g.priority !== undefined && g.priority !== null ? parseInt(String(g.priority), 10) : 3
-          };
+      
+      const goalsSnap = await firestore()
+        .collection("users")
+        .doc(userId)
+        .collection("goals")
+        .get();
+        
+      const goalsList = [];
+      goalsSnap.forEach((doc) => {
+        const g = doc.data();
+        const targetNum = parseFloat(String(g.target_amount).replace(/,/g, "")) || 1000;
+        const progressAmount = parseFloat(String(g.progress).replace(/,/g, "")) || 0;
+        const progressPercent = Math.min(100, Math.round((progressAmount / targetNum) * 100));
+        
+        goalsList.push({
+          id: doc.id,
+          name: g.name,
+          target: targetNum,
+          progressAmount: progressAmount,
+          progressPercent: progressPercent,
+          timeLeft: g.time_to_reach 
+            ? `${g.time_to_reach} ${frequency === "Weekly" ? (g.time_to_reach === 1 ? "week" : "weeks") : (g.time_to_reach === 1 ? "month" : "months")} left`
+            : "2 weeks left",
+          iconType: getSelectedIcon(g.name),
+          image: g.image_url,
+          isActive: g.is_active === 1,
+          priority: g.priority !== undefined && g.priority !== null ? parseInt(String(g.priority), 10) : 3
         });
+      });
 
-        const sorted = mapped.sort((a, b) => {
-          if (a.priority !== b.priority) {
-            return a.priority - b.priority; // Ascending priority (1 comes first)
-          }
-          if (a.target !== b.target) {
-            return b.target - a.target; // Descending budget (highest target first)
-          }
-          return a.name.localeCompare(b.name); // Alphabetical sorting as a secondary tie-breaker
-        });
+      const sorted = goalsList.sort((a, b) => {
+        if (a.priority !== b.priority) {
+          return a.priority - b.priority;
+        }
+        if (a.target !== b.target) {
+          return b.target - a.target;
+        }
+        return a.name.localeCompare(b.name);
+      });
 
-        setDbGoals(sorted);
-      }
-    } catch {
+      setDbGoals(sorted);
+    } catch (e) {
+      console.error("Error fetching goals:", e);
     }
   };
 
   const fetchTransactions = async () => {
     try {
-      const userId = user.id || user.userId || route.params?.user?.id;
+      const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
       if (!userId) return;
-      const response = await apiFetch("/get_transactions");
-      const data = await response.json();
-      if (response.ok && data.transactions) {
-        setDbTransactions(data.transactions);
-      }
-    } catch {
+      
+      const txSnap = await firestore()
+        .collection("users")
+        .doc(userId)
+        .collection("transactions")
+        .orderBy("created_at", "desc")
+        .get();
+        
+      const txList = [];
+      txSnap.forEach((doc) => {
+        const tx = doc.data();
+        txList.push({
+          id: doc.id,
+          title: tx.title,
+          category: tx.category,
+          amount: parseFloat(tx.amount) || 0,
+          date: tx.date,
+          icon: tx.icon,
+          monthLabel: tx.monthLabel,
+          avoidable: tx.avoidable,
+          reason: tx.reason
+        });
+      });
+      setDbTransactions(txList);
+    } catch (e) {
+      console.error("Error fetching transactions:", e);
     }
   };
 
@@ -484,18 +489,17 @@ export default function DashboardScreen({ navigation, route }) {
 
   const handleSimulateRollover = async () => {
     try {
-      const response = await apiFetch("/simulate_rollover", {
-        method: "POST"
+      const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+      if (!userId) return;
+
+      await firestore().collection("users").doc(userId).update({
+        "onboarding.last_refreshed": firestore.FieldValue.serverTimestamp()
       });
-      const data = await response.json();
-      if (response.ok) {
-        Alert.alert("Success", "Simulated cycle end. Refreshing dashboard...");
-        fetchOnboarding();
-      } else {
-        Alert.alert("Error", data.error || "Failed to simulate rollover");
-      }
+      Alert.alert("Success", "Simulated cycle end. Refreshing dashboard...");
+      fetchOnboarding();
     } catch (err) {
-      Alert.alert("Network Error", "Could not connect to server to simulate rollover.");
+      console.error(err);
+      Alert.alert("Error", "Failed to simulate rollover");
     }
   };
 
@@ -529,24 +533,15 @@ export default function DashboardScreen({ navigation, route }) {
     setOnboardingData(nextOnboarding);
     Alert.alert("Success", `₹${inputAmt.toLocaleString("en-IN")} successfully added to your current ${frequency.toLowerCase()} allowance!`);
 
-    // 2. Perform API call in background (non-blocking sync)
-    apiFetch("/update_allowance_savings", {
-      method: "POST",
-      body: JSON.stringify({
-        savingsProgressAmount: savingsProgressVal,
-        currentBalance: newBalance,
-        savingsProgress2: savingsProgressVal2,
-        savingsProgress3: savingsProgressVal3,
-        allowance: newAllowanceLimit
+    // 2. Perform Firestore update in background (non-blocking sync)
+    const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+    if (userId) {
+      firestore().collection("users").doc(userId).update({
+        "onboarding.current_balance": String(newBalance),
+        "onboarding.allowance_amount": String(newAllowanceLimit)
       })
-    })
-    .then((response) => {
-      if (!response.ok) {
-      } else {
-      }
-    })
-    .catch((err) => {
-    });
+      .catch((err) => console.error("Error updating allowance in Firestore:", err));
+    }
   };
 
     const getUniqueTransactions = (dbList, localList) => {

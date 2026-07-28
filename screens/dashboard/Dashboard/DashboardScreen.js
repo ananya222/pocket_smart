@@ -311,6 +311,11 @@ export default function DashboardScreen({ navigation, route }) {
     }
   ]);
 
+  const dbGoalsRef = React.useRef([]);
+  React.useEffect(() => {
+    dbGoalsRef.current = dbGoals;
+  }, [dbGoals]);
+
   React.useEffect(() => {
     const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
     if (!userId) return;
@@ -339,6 +344,41 @@ export default function DashboardScreen({ navigation, route }) {
           setSavingsProgressVal(parseInt(String(mappedOnboarding.savingsProgressAmount).replace(/[^0-9]/g, ""), 10) || 0);
           setSavingsProgressVal2(parseInt(String(mappedOnboarding.savingsProgress2).replace(/[^0-9]/g, ""), 10) || 2200);
           setSavingsProgressVal3(parseInt(String(mappedOnboarding.savingsProgress3).replace(/[^0-9]/g, ""), 10) || 3000);
+
+          // Client-side cycle rollover check
+          if (info.last_refreshed) {
+            const lastRefreshedDate = info.last_refreshed.toDate ? info.last_refreshed.toDate() : new Date(info.last_refreshed);
+            if (lastRefreshedDate && !isNaN(lastRefreshedDate.getTime())) {
+              const diffMs = Date.now() - lastRefreshedDate.getTime();
+              const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+              let rolloverDue = false;
+              if (mappedOnboarding.frequency === "Weekly") {
+                if (diffDays >= 7) {
+                  rolloverDue = true;
+                }
+              } else if (mappedOnboarding.frequency === "Monthly") {
+                const now = new Date();
+                const isNewMonth = now.getMonth() !== lastRefreshedDate.getMonth() || now.getFullYear() !== lastRefreshedDate.getFullYear();
+                if (diffDays >= 30 || isNewMonth) {
+                  rolloverDue = true;
+                }
+              }
+
+              if (rolloverDue && navigation.isFocused()) {
+                navigation.navigate("Allocation", {
+                  user: {
+                    ...user,
+                    onboarding: mappedOnboarding
+                  },
+                  savedAmount: mappedOnboarding.currentBalance,
+                  newAllowance: parseFloat(String(mappedOnboarding.allowance).replace(/,/g, "")) || 5000,
+                  newFrequency: mappedOnboarding.frequency,
+                  goals: dbGoalsRef.current || []
+                });
+              }
+            }
+          }
         }
       }, (err) => console.error("Error listening to onboarding changes:", err));
 
@@ -430,10 +470,14 @@ export default function DashboardScreen({ navigation, route }) {
       const userId = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
       if (!userId) return;
 
+      // Set last_refreshed to 31 days in the past to trigger client-side rollover logic
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 31);
+
       await firestore().collection("users").doc(userId).update({
-        "onboarding.last_refreshed": firestore.FieldValue.serverTimestamp()
+        "onboarding.last_refreshed": pastDate
       });
-      Alert.alert("Success", "Simulated cycle end. Refreshing dashboard...");
+      Alert.alert("Success", "Simulated cycle end. Navigating to allocation...");
     } catch (err) {
       console.error(err);
       Alert.alert("Error", "Failed to simulate rollover");

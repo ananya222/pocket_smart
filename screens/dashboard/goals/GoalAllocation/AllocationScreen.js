@@ -162,7 +162,8 @@ export default function AllocationScreen({ navigation, route }) {
           "onboarding.current_balance": String(finalBalance),
           "onboarding.allowance_amount": String(newAllowance),
           "onboarding.allowance_frequency": newFrequency || onboarding.frequency,
-          "onboarding.cycle_limit": String(finalBalance)
+          "onboarding.cycle_limit": String(finalBalance),
+          "onboarding.last_refreshed": firestore.FieldValue.serverTimestamp()
         });
 
         // 2. Update progress for each goal

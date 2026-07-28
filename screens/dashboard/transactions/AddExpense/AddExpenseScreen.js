@@ -1,4 +1,5 @@
 // AddExpenseScreen.js
+import { auth, firestore } from "../../../../config";
 import React, { useState } from "react";
 import {
   View,
@@ -36,15 +37,39 @@ export default function AddExpenseScreen({ navigation, route }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Balance calculations for dynamic live preview
-  const currentBalanceStr = typeof onboarding.currentBalance === "string" 
-    ? onboarding.currentBalance 
-    : String(onboarding.currentBalance !== undefined && onboarding.currentBalance !== null ? onboarding.currentBalance : "5000");
-  const currentBalance = parseFloat(currentBalanceStr.replace(/,/g, "")) || 0;
+  const [liveOnboarding, setLiveOnboarding] = useState(null);
 
-  const allowanceStr = typeof onboarding.allowance === "string" 
-    ? onboarding.allowance 
-    : String(onboarding.allowance !== undefined && onboarding.allowance !== null ? onboarding.allowance : "5000");
+  React.useEffect(() => {
+    const userUid = user.id || user.userId || route.params?.user?.id || auth().currentUser?.uid;
+    if (!userUid) return;
+
+    const unsubscribe = firestore()
+      .collection("users")
+      .doc(userUid)
+      .onSnapshot((docSnap) => {
+        if (docSnap.exists) {
+          const data = docSnap.data();
+          if (data && data.onboarding) {
+            setLiveOnboarding(data.onboarding);
+          }
+        }
+      }, (err) => console.error("Error listening to user balance in AddExpenseScreen:", err));
+
+    return unsubscribe;
+  }, [user.id]);
+
+  const onboardingData = {
+    allowance: liveOnboarding?.allowance_amount || onboarding.allowance || "5,000",
+    frequency: liveOnboarding?.allowance_frequency || onboarding.frequency || "Monthly",
+    currentBalance: liveOnboarding?.current_balance !== undefined 
+      ? parseFloat(liveOnboarding.current_balance) 
+      : (onboarding.currentBalance !== undefined ? parseFloat(String(onboarding.currentBalance).replace(/,/g, "")) : 5000),
+  };
+
+  const currentBalance = onboardingData.currentBalance;
+  const allowanceStr = typeof onboardingData.allowance === "string" 
+    ? onboardingData.allowance 
+    : String(onboardingData.allowance || "5000");
   const parsedAllowance = parseFloat(allowanceStr.replace(/,/g, ""));
   const cleanAllowance = !isNaN(parsedAllowance) ? parsedAllowance : 5000;
   const dynamicAllowanceLimit = Math.max(cleanAllowance, currentBalance);
@@ -86,7 +111,14 @@ export default function AddExpenseScreen({ navigation, route }) {
     setTimeout(() => {
       setIsLoading(false);
       navigation.navigate("Impact", {
-        user,
+        user: {
+          ...user,
+          onboarding: {
+            ...user.onboarding,
+            currentBalance: currentBalance,
+            allowance: cleanAllowance.toLocaleString("en-IN"),
+          }
+        },
         expenseAmount,
         merchant: merchant.trim(),
         category: selectedCategory,

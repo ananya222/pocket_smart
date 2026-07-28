@@ -82,8 +82,8 @@ export default function SignupScreen({ navigation }) {
       navigation.navigate("Welcome", { user });
 
     } catch (error) {
-      console.error("Login failed with error:", error);
-      let message = "An unexpected error occurred. Please try again.";
+      console.error("Signup failed with error:", error);
+      let message = "Could not create account. Please try again.";
 
       switch (error.code) {
         case "auth/email-already-in-use":

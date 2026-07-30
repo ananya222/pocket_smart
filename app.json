@@ -30,6 +30,10 @@
       "package": "com.pocketsmart.app",
       "backgroundColor": "#111210",
       "googleServicesFile": "./google-services.json"
+    },
+    "ios": {
+      "bundleIdentifier": "com.pocketsmart.app",
+      "googleServicesFile": "./GoogleService-Info.plist"
     }
   }
 }

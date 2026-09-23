@@ -1,28 +1,2 @@
 import { StyleSheet } from "react-native";
-
-export const styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1,
-    backgroundColor: "#111210"
-  },
-  scrollContainer: {
-    paddingHorizontal: 20,
-    alignItems: "center"
-  },
-  heading: {
-    fontSize: 22,
-    color: "#FFFFFF",
-    fontFamily: "DMSerifDisplay-Regular",
-    textAlign: "center",
-    marginBottom: 8
-  },
-  subtitle: {
-    fontSize: 13,
-    color: "#8A90A8",
-    fontFamily: "DMSerifDisplay-Regular",
-    textAlign: "center",
-    marginBottom: 24,
-    lineHeight: 18,
-    paddingHorizontal: 10
-  }
-});
+export const styles=StyleSheet.create({safeArea:{flex:1,backgroundColor:"#F7F3EB"},content:{flex:1,paddingHorizontal:28,paddingTop:72,paddingBottom:28},mark:{width:56,height:56,borderRadius:28,backgroundColor:"#302C27",alignItems:"center",justifyContent:"center",marginBottom:34},eyebrow:{fontFamily:"SourceSansPro-SemiBold",fontSize:11,letterSpacing:1.6,color:"#8A6541",marginBottom:14},title:{fontFamily:"SourceSerifPro-Regular",fontSize:36,lineHeight:41,color:"#302C27",letterSpacing:-.7},subtitle:{fontFamily:"SourceSansPro-Regular",fontSize:16,lineHeight:23,color:"#665B50",marginTop:10},overflow:{borderTopWidth:1,borderBottomWidth:1,borderColor:"#DDD5C9",paddingVertical:20,marginTop:42},overflowLabel:{fontFamily:"SourceSansPro-SemiBold",fontSize:11,letterSpacing:1.4,color:"#8A6541"},overflowAmount:{fontFamily:"SourceSerifPro-Regular",fontSize:32,color:"#302C27",marginTop:8},overflowCopy:{fontFamily:"SourceSansPro-Regular",fontSize:14,lineHeight:20,color:"#665B50",marginTop:5},primary:{height:56,borderRadius:12,backgroundColor:"#302C27",alignItems:"center",justifyContent:"center",marginTop:"auto"},primaryText:{fontFamily:"SourceSansPro-SemiBold",fontSize:16,color:"#F8F5EE"}});

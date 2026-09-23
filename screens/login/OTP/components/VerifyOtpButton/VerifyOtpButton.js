@@ -1,8 +1,8 @@
 import React, { useRef } from "react";
-import { View, Text, TouchableOpacity, Animated } from "react-native";
+import { View, Text, TouchableOpacity, Animated, ActivityIndicator } from "react-native";
 import { styles } from "./VerifyOtpButton.styles";
 
-export default function VerifyOtpButton({ onPress }) {
+export default function VerifyOtpButton({ onPress, loading = false, disabled = false }) {
   const verifyScale = useRef(new Animated.Value(1)).current;
 
   const verifyScaleStyle = React.useMemo(() => ({
@@ -20,14 +20,18 @@ export default function VerifyOtpButton({ onPress }) {
   return (
     <TouchableOpacity
       onPress={onPress}
+      disabled={disabled}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
-      style={styles.buttonContainer}
+      accessibilityRole="button"
+      accessibilityLabel="Verify code"
+      accessibilityState={{ disabled, busy: loading }}
+      style={[styles.buttonContainer, disabled && { opacity: 0.65 }]}
     >
       <Animated.View style={[styles.buttonScaleWrapper, verifyScaleStyle]}>
         <View style={styles.buttonSolid}>
-          <Text style={styles.buttonText}>Verify OTP</Text>
+          {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Verify OTP</Text>}
         </View>
       </Animated.View>
     </TouchableOpacity>

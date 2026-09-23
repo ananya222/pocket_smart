@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { styles } from "./OtpHeader.styles";
 
-export default function OtpHeader({ onBackPress }) {
+export default function OtpHeader({ onBackPress, phoneNumber }) {
   return (
     <>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", width: "100%", height: 40 }}>
@@ -19,7 +19,8 @@ export default function OtpHeader({ onBackPress }) {
       <View style={styles.headerTextContainer}>
         <Text style={styles.headerTitle}>Verification Code</Text>
         <Text style={styles.headerDescription}>
-          We have sent a security verification code to your registered email address.
+          We sent a 6-digit code to{"\n"}
+          {phoneNumber || "your mobile number"}.
         </Text>
       </View>
     </>

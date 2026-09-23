@@ -1,18 +1,26 @@
-import React, { useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
-import { View, ActivityIndicator, Platform } from "react-native";
+import { AccessibilityInfo, Easing, View, ActivityIndicator, Platform, Text } from "react-native";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import * as NavigationBar from "expo-navigation-bar";
 import { auth, firestore } from "./config";
+import { UI_VERSION } from "./config/uiVersion";
+import { UI_PREVIEW_MODE } from "./config/uiPreview";
+import { colors, radius, shadows, spacing, typography } from "./theme/theme";
+
+// Keep the development gallery out of the production module-evaluation path.
+// Metro still bundles it for web development, but native/production startup
+// never evaluates the mock screen tree when UI_PREVIEW_MODE is false.
+const UIDevGallery = UI_PREVIEW_MODE ? require("./screens/dev/UIDevGallery").default : null;
+const DevNormalModeScreen = UI_PREVIEW_MODE ? require("./screens/dev/DevNormalModeScreen").default : null;
 
 import LoginScreen from "./screens/login/Login/LoginScreen";
 import SignupScreen from "./screens/signup/Signup/SignupScreen";
-import OtpScreen from "./screens/login/OTP/OtpScreen";
 import WelcomeScreen from "./screens/onboarding/Welcome/WelcomeScreen";
 import PocketMoneyScreen from "./screens/onboarding/PocketMoney/PocketMoneyScreen";
 import SavingsGoalScreen from "./screens/onboarding/SavingsGoal/SavingsGoalScreen";
@@ -27,55 +35,87 @@ import ConfirmGoalScreen from "./screens/dashboard/goals/GoalConfirmation/Confir
 import AllocationScreen from "./screens/dashboard/goals/GoalAllocation/AllocationScreen";
 import GoalAchievedScreen from "./screens/dashboard/goals/GoalAchieved/GoalAchievedScreen";
 
+import WelcomeScreenV2 from "./screens/v2/WelcomeScreen";
+import PocketMoneyScreenV2 from "./screens/v2/PocketMoneyScreen";
+import SavingsGoalScreenV2 from "./screens/v2/SavingsGoalScreen";
+import OnboardingCompleteScreenV2 from "./screens/v2/OnboardingCompleteScreen";
+import DashboardScreenV2 from "./screens/v2/DashboardScreen";
+import AddMoneyScreenV2 from "./screens/v2/AddMoneyScreen";
+import GoalsScreenV2 from "./screens/v2/GoalsScreen";
+import InsightsScreenV2 from "./screens/v2/InsightsScreen";
+import ProfileScreenV2 from "./screens/v2/ProfileScreen";
+import ChangePasswordScreenV2 from "./screens/v2/ChangePasswordScreen";
+import AddExpenseScreenV2 from "./screens/v2/AddExpenseScreen";
+import ExpenseReflectionScreenV2 from "./screens/v2/ExpenseReflectionScreen";
+import ExpenseCategoryScreenV2 from "./screens/v2/ExpenseCategoryScreen";
+import { ConfirmGoalScreenV2, AllocationScreenV2, AllocationEmptyScreen, AllocationSuccessScreenV2, GoalAchievedScreenV2 } from "./screens/v2/GoalFlowScreens";
+
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+const IS_V2 = UI_VERSION === "v2";
+const APP_BACKGROUND = IS_V2 ? colors.background : "#111210";
+const ReduceMotionContext = createContext(true);
+const TAB_TRANSITION = { animation: "timing", config: { duration: 180, easing: Easing.inOut(Easing.ease) } };
 
 function DashboardTabs({ route, navigation }) {
+  const reduceMotion = useContext(ReduceMotionContext);
   const user = route.params?.user || {};
-  const accentColor = "#9D4EDD";
+  const accentColor = IS_V2 ? colors.text : "#9D4EDD";
   const insets = useSafeAreaInsets();
+  const tabLabel = (label) => IS_V2 ? ({ color, focused }) => <Text style={{ ...typography.navigation, color, fontFamily: focused ? typography.button.fontFamily : typography.navigation.fontFamily }}>{label}</Text> : label;
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
+        animation: reduceMotion ? "none" : "fade",
+        transitionSpec: reduceMotion ? { animation: "timing", config: { duration: 0 } } : TAB_TRANSITION,
+        sceneStyle: { backgroundColor: APP_BACKGROUND },
         tabBarShowLabel: true,
         tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: accentColor,
-        tabBarInactiveTintColor: "#8A90A8",
+        tabBarInactiveTintColor: IS_V2 ? colors.textMuted : "#8A90A8",
         tabBarStyle: {
-          backgroundColor: "#111210",
+          backgroundColor: IS_V2 ? colors.background : "#111210",
           borderTopWidth: 1,
-          borderTopColor: "rgba(255, 255, 255, 0.08)",
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          height: 64 + insets.bottom,
-          paddingBottom: insets.bottom,
-          elevation: 8,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.4,
-          shadowRadius: 12,
-          overflow: "hidden",
+          borderTopColor: IS_V2 ? colors.divider : "rgba(255, 255, 255, 0.08)",
+          borderTopLeftRadius: IS_V2 ? 0 : 16,
+          borderTopRightRadius: IS_V2 ? 0 : 16,
+          // Keep the designed footer height stable and add the device's system
+          // inset so it stays clear of gesture and three-button navigation.
+          height: IS_V2 ? 80 + insets.bottom : 60 + insets.bottom,
+          paddingTop: IS_V2 ? 16 : 4,
+          paddingBottom: IS_V2 ? insets.bottom + 8 : insets.bottom,
+          paddingHorizontal: IS_V2 ? 26 : 0,
+          elevation: IS_V2 ? 0 : 8,
+          shadowColor: IS_V2 ? shadows.subtle.shadowColor : "#000",
+          shadowOffset: IS_V2 ? { width: 0, height: 0 } : { width: 0, height: -4 },
+          shadowOpacity: IS_V2 ? 0 : 0.4,
+          shadowRadius: IS_V2 ? 0 : 12,
+          overflow: "visible",
         },
         tabBarItemStyle: {
           flex: 1,
-          justifyContent: "center",
+          // The HTML footer starts its 56px item block immediately below the
+          // 16px top padding. Keeping the block top-aligned preserves the
+          // intentional cream space below its labels.
+          justifyContent: IS_V2 ? "flex-start" : "center",
           alignItems: "center",
-          paddingTop: 8,
-          paddingBottom: 8,
+          minHeight: IS_V2 ? 56 : undefined,
+          paddingTop: IS_V2 ? 0 : 8,
+          paddingBottom: IS_V2 ? 0 : 8,
         },
         tabBarIconStyle: {
-          marginBottom: 0,
+          marginBottom: IS_V2 ? 7 : 0,
         },
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: "500",
-          letterSpacing: 0.2,
-          marginTop: 3,
+          fontFamily: IS_V2 ? typography.navigation.fontFamily : "SourceSansPro-SemiBold",
+          ...(IS_V2 ? typography.navigation : {}),
+          marginTop: IS_V2 ? 0 : 3,
         },
-        tabBarBackground: () => (
+        tabBarBackground: !IS_V2 ? () => (
           <BlurView
             intensity={80}
             tint="dark"
@@ -85,28 +125,28 @@ function DashboardTabs({ route, navigation }) {
               backgroundColor: "transparent",
             }}
           />
-        ),
+        ) : undefined,
       }}
     >
       <Tab.Screen
         name="Home"
-        component={DashboardScreen}
+        component={IS_V2 ? DashboardScreenV2 : DashboardScreen}
         initialParams={{ user }}
         options={{
-          tabBarLabel: "Home",
-          tabBarIcon: ({ color }) => <Feather name="home" size={20} color={color} />,
+          tabBarLabel: tabLabel("Home"),
+          tabBarIcon: ({ color }) => <Feather name="home" size={18} color={color} />,
         }}
       />
       <Tab.Screen
         name="Goals"
-        component={GoalsScreen}
+        component={IS_V2 ? GoalsScreenV2 : GoalsScreen}
         initialParams={{ user }}
         options={{
-          tabBarLabel: "Goals",
-          tabBarIcon: ({ color }) => <Feather name="target" size={20} color={color} />,
+          tabBarLabel: tabLabel("Goals"),
+          tabBarIcon: ({ color }) => <Feather name="layers" size={18} color={color} />,
         }}
       />
-      <Tab.Screen
+      {!IS_V2 ? <Tab.Screen
         name="AddExpenseTab"
         component={View}
         options={{
@@ -114,14 +154,14 @@ function DashboardTabs({ route, navigation }) {
           tabBarItemStyle: {
             justifyContent: "flex-start",
             alignItems: "center",
-            paddingTop: 12,
+            paddingTop: 4,
             paddingBottom: 0,
           },
           tabBarIcon: () => (
             <View style={{
               width: 40,
               height: 40,
-              borderRadius: 20,
+              borderRadius: radius.hero,
               backgroundColor: accentColor,
               justifyContent: "center",
               alignItems: "center",
@@ -129,11 +169,11 @@ function DashboardTabs({ route, navigation }) {
                 ios: {
                   shadowColor: accentColor,
                   shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.5,
-                  shadowRadius: 8,
+                  shadowOpacity: IS_V2 ? 0.08 : 0.5,
+                  shadowRadius: IS_V2 ? 4 : 8,
                 },
                 android: {
-                  elevation: 6,
+                  elevation: IS_V2 ? 1 : 6,
                 },
               }),
             }}>
@@ -147,22 +187,26 @@ function DashboardTabs({ route, navigation }) {
             navigation.navigate("AddExpense", { user });
           },
         }}
-      />
+      /> : null}
       <Tab.Screen
         name="Insights"
-        component={InsightsScreen}
+        component={IS_V2 ? InsightsScreenV2 : InsightsScreen}
         initialParams={{ user }}
         options={{
-          tabBarLabel: "Insights",
-          tabBarIcon: ({ color }) => <Feather name="bar-chart-2" size={20} color={color} />,
+          tabBarLabel: tabLabel("Insights"),
+          tabBarIcon: ({ color }) => <Feather name="bar-chart-2" size={18} color={color} />,
         }}
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={IS_V2 ? ProfileScreenV2 : ProfileScreen}
         initialParams={{ user }}
         options={{
-          tabBarLabel: "Profile",
+          tabBarButton: IS_V2 ? () => null : undefined,
+          // Hiding only the button leaves React Navigation's flex wrapper
+          // occupying a fourth column. Remove that wrapper from layout too.
+          tabBarItemStyle: IS_V2 ? { display: "none" } : undefined,
+          tabBarLabel: tabLabel("Profile"),
           tabBarIcon: ({ color }) => <Feather name="user" size={20} color={color} />,
         }}
       />
@@ -170,28 +214,44 @@ function DashboardTabs({ route, navigation }) {
   );
 }
 
-const darkTheme = {
+const navigationTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: "#111210",
+    background: APP_BACKGROUND,
   },
 };
 
 export default function App() {
-  const [checkingSession, setCheckingSession] = useState(true);
+  const [reduceMotion, setReduceMotion] = useState(true);
+  useEffect(() => {
+    let active = true;
+    let preferenceChanged = false;
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", (enabled) => {
+      preferenceChanged = true;
+      setReduceMotion(enabled);
+    });
+    AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (active && !preferenceChanged) setReduceMotion(enabled);
+    }).catch(() => {});
+    return () => { active = false; subscription.remove(); };
+  }, []);
+  const [checkingSession, setCheckingSession] = useState(!UI_PREVIEW_MODE);
   const [initialUser, setInitialUser] = useState(null);
-  const [initialRoute, setInitialRoute] = useState("Login");
+  const [initialRoute, setInitialRoute] = useState(UI_PREVIEW_MODE ? "DevGallery" : "Login");
 
   useEffect(() => {
     if (Platform.OS === "android") {
       NavigationBar.setPositionAsync("relative");
-      NavigationBar.setBackgroundColorAsync("#111210");
-      NavigationBar.setButtonStyleAsync("light");
+      NavigationBar.setBackgroundColorAsync(APP_BACKGROUND);
+      NavigationBar.setButtonStyleAsync(IS_V2 ? "dark" : "light");
     }
   }, []);
 
   const [fontsLoaded] = useFonts({
+    "Inter-Regular": require("./assets/fonts/Inter-Regular.ttf"),
+    "Inter-SemiBold": require("./assets/fonts/Inter-SemiBold.ttf"),
+    "Inter-Bold": require("./assets/fonts/Inter-Bold.ttf"),
     // Map existing names to the new Source Serif Pro and Source Sans Pro fonts
     "SFProDisplay-Regular": require("./assets/fonts/SourceSansPro-Regular.ttf"),
     "SFProDisplay-Bold": require("./assets/fonts/SourceSansPro-Bold.ttf"),
@@ -210,7 +270,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    if (!fontsLoaded) return;
+    if (!fontsLoaded || UI_PREVIEW_MODE) return undefined;
 
     // Firebase Auth persists the session automatically.
     // onAuthStateChanged fires once on startup with the current user (or null).
@@ -256,26 +316,33 @@ export default function App() {
     return unsubscribe;
   }, [fontsLoaded]);
 
-  if (!fontsLoaded || checkingSession) {
+  if (!fontsLoaded || (!UI_PREVIEW_MODE && checkingSession)) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#111210" }}>
-        <ActivityIndicator size="large" color="#9D4EDD" />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: APP_BACKGROUND }}>
+        <ActivityIndicator size="large" color={IS_V2 ? colors.primary : "#9D4EDD"} />
       </View>
     );
   }
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer theme={darkTheme}>
+      <ReduceMotionContext.Provider value={reduceMotion}>
+      <NavigationContainer theme={navigationTheme}>
         <Stack.Navigator
           initialRouteName={initialRoute}
           screenOptions={{
             headerShown: false,
-            animation: "fade",
-            contentStyle: { backgroundColor: "#111210" },
+            animation: reduceMotion ? "none" : "fade_from_bottom",
+            contentStyle: { backgroundColor: APP_BACKGROUND },
             freezeOnBlur: false,
           }}
         >
+        {UI_PREVIEW_MODE ? (
+          <>
+            <Stack.Screen name="DevGallery" component={UIDevGallery} />
+            <Stack.Screen name="DevNormalApp" component={DevNormalModeScreen} />
+          </>
+        ) : null}
         <Stack.Screen
           name="Login"
           component={LoginScreen}
@@ -287,29 +354,24 @@ export default function App() {
         />
 
         <Stack.Screen
-          name="Otp"
-          component={OtpScreen}
-        />
-
-        <Stack.Screen
           name="Welcome"
-          component={WelcomeScreen}
+          component={IS_V2 ? WelcomeScreenV2 : WelcomeScreen}
           initialParams={initialRoute === "Welcome" ? { user: initialUser } : undefined}
         />
 
         <Stack.Screen
           name="PocketMoney"
-          component={PocketMoneyScreen}
+          component={IS_V2 ? PocketMoneyScreenV2 : PocketMoneyScreen}
         />
 
         <Stack.Screen
           name="SavingsGoal"
-          component={SavingsGoalScreen}
+          component={IS_V2 ? SavingsGoalScreenV2 : SavingsGoalScreen}
         />
 
         <Stack.Screen
           name="OnboardingComplete"
-          component={OnboardingCompleteScreen}
+          component={IS_V2 ? OnboardingCompleteScreenV2 : OnboardingCompleteScreen}
         />
 
         <Stack.Screen
@@ -319,28 +381,51 @@ export default function App() {
         />
 
         <Stack.Screen
+          name="AddMoney"
+          component={IS_V2 ? AddMoneyScreenV2 : DashboardScreen}
+        />
+
+        <Stack.Screen
+          name="ChangePassword"
+          component={ChangePasswordScreenV2}
+        />
+
+        <Stack.Screen
           name="ConfirmGoal"
-          component={ConfirmGoalScreen}
+          component={IS_V2 ? ConfirmGoalScreenV2 : ConfirmGoalScreen}
         />
 
         <Stack.Screen
           name="Allocation"
-          component={AllocationScreen}
+          component={IS_V2 ? AllocationScreenV2 : AllocationScreen}
+        />
+        <Stack.Screen
+          name="AllocationEmpty"
+          component={IS_V2 ? AllocationEmptyScreen : AllocationScreen}
+        />
+        <Stack.Screen
+          name="AllocationSuccess"
+          component={IS_V2 ? AllocationSuccessScreenV2 : AllocationScreen}
         />
         <Stack.Screen
           name="GoalAchieved"
-          component={GoalAchievedScreen}
+          component={IS_V2 ? GoalAchievedScreenV2 : GoalAchievedScreen}
         />
         <Stack.Screen
           name="AddExpense"
-          component={AddExpenseScreen}
+          component={IS_V2 ? AddExpenseScreenV2 : AddExpenseScreen}
+        />
+        <Stack.Screen
+          name="ExpenseCategory"
+          component={IS_V2 ? ExpenseCategoryScreenV2 : AddExpenseScreen}
         />
         <Stack.Screen
           name="Impact"
-          component={ExpenseReflectionScreen}
+          component={IS_V2 ? ExpenseReflectionScreenV2 : ExpenseReflectionScreen}
         />
         </Stack.Navigator>
       </NavigationContainer>
+      </ReduceMotionContext.Provider>
     </SafeAreaProvider>
   );
 }

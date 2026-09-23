@@ -1,13 +1,4 @@
 import { StyleSheet } from "react-native";
-
 export const styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1,
-    backgroundColor: "#111210",
-  },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: 24,
-    alignItems: "center",
-  },
+  safeArea:{flex:1,backgroundColor:"#F7F3EB"},content:{flex:1,paddingHorizontal:28,paddingTop:18,paddingBottom:28},back:{width:40,height:40,alignItems:"center",justifyContent:"center",marginLeft:-10},intro:{marginTop:34},eyebrow:{fontFamily:"SourceSansPro-SemiBold",fontSize:11,letterSpacing:1.6,color:"#8A6541",marginBottom:14},title:{fontFamily:"SourceSerifPro-Regular",fontSize:36,lineHeight:41,letterSpacing:-.7,color:"#302C27"},subtitle:{fontFamily:"SourceSansPro-Regular",fontSize:16,lineHeight:23,color:"#665B50",marginTop:10},summary:{borderTopWidth:1,borderBottomWidth:1,borderColor:"#DDD5C9",paddingVertical:22,marginTop:46},summaryLabel:{fontFamily:"SourceSansPro-SemiBold",fontSize:11,letterSpacing:1.4,color:"#8A6541"},goalName:{fontFamily:"SourceSansPro-SemiBold",fontSize:18,color:"#302C27",marginTop:10},amount:{fontFamily:"SourceSerifPro-Regular",fontSize:34,color:"#302C27",marginTop:8},meta:{fontFamily:"SourceSansPro-Regular",fontSize:14,color:"#665B50",marginTop:6},actions:{marginTop:"auto"},primary:{height:56,backgroundColor:"#302C27",borderRadius:12,alignItems:"center",justifyContent:"center"},primaryText:{fontFamily:"SourceSansPro-SemiBold",fontSize:16,color:"#F8F5EE"},secondary:{alignItems:"center",paddingVertical:18},secondaryText:{fontFamily:"SourceSansPro-SemiBold",fontSize:15,color:"#8A6541"}
 });

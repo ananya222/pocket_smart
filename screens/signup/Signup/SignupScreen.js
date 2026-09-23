@@ -1,194 +1,138 @@
-// SignupScreen.js
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
+  ActivityIndicator,
   Alert,
-  ScrollView,
+  Image,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StatusBar,
-  useWindowDimensions,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { BlurView } from "expo-blur";
-import { styles } from "./SignupScreen.styles";
-import BackgroundGrid from "../../../components/BackgroundGrid/BackgroundGrid";
-import PremiumInput from "../../../components/PremiumInput/PremiumInput";
-import SignupHeader from "./components/SignupHeader/SignupHeader";
-import SignupButton from "./components/SignupButton/SignupButton";
-import SignupLoginRedirect from "./components/SignupLoginRedirect/SignupLoginRedirect";
-import SignupTrustBadge from "./components/SignupTrustBadge/SignupTrustBadge";
-
+import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth, firestore } from "../../../config";
+import { signInWithGoogle } from "../../../services/googleLogin";
+import { colors } from "../../../theme/theme";
+import { styles } from "./SignupScreen.styles";
+
+const Input = ({ label, value, onChangeText, placeholder, keyboardType, secureTextEntry, autoCapitalize = "sentences" }) => (
+  <View style={styles.fieldGroup}>
+    <Text style={styles.label}>{label}</Text>
+    <TextInput
+      accessibilityLabel={label}
+      autoCapitalize={autoCapitalize}
+      autoComplete={label === "Email" ? "email" : label.includes("Password") ? "password" : "off"}
+      keyboardType={keyboardType}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor="#8A8177"
+      secureTextEntry={secureTextEntry}
+      style={styles.input}
+      value={value}
+    />
+  </View>
+);
 
 export default function SignupScreen({ navigation }) {
-  const { height } = useWindowDimensions();
-
   const [fullName, setFullName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const inProgress = useRef(false);
 
   const handleSignup = async () => {
-    if (!fullName.trim() || !phoneNumber.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-      Alert.alert("Error", "Please fill in all fields.");
+    if (inProgress.current) return;
+    if (!fullName.trim() || !email.trim() || !password || !confirmPassword) {
+      Alert.alert("Create account", "Complete each field to continue.");
       return;
     }
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match.");
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters.");
-      return;
-    }
-
+    if (password !== confirmPassword) return Alert.alert("Create account", "Your passwords do not match.");
+    if (password.length < 6) return Alert.alert("Create account", "Your password must have at least 6 characters.");
+    inProgress.current = true;
     setLoading(true);
     try {
-      // Create user with Firebase Authentication
-      const userCredential = await auth().createUserWithEmailAndPassword(
-        email.trim(),
-        password.trim()
-      );
-
-      const firebaseUser = userCredential.user;
-
-      // Save additional profile data to Firestore
-      await firestore()
-        .collection("users")
-        .doc(firebaseUser.uid)
-        .set({
-          fullName: fullName.trim(),
-          phoneNumber: phoneNumber.trim(),
-          email: email.trim(),
-          onboardingCompleted: false,
-          onboarding: null,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
-
-      const user = {
-        id: firebaseUser.uid,
+      const credential = await auth().createUserWithEmailAndPassword(email.trim(), password);
+      const profile = {
         fullName: fullName.trim(),
         email: email.trim(),
-        phoneNumber: phoneNumber.trim(),
+        phoneNumber: "",
+        phoneVerified: false,
+        onboardingCompleted: false,
+        onboarding: null,
+        createdAt: firestore.FieldValue.serverTimestamp(),
+      };
+      await firestore().collection("users").doc(credential.user.uid).set(profile, { merge: true });
+      const user = {
+        id: credential.user.uid,
+        fullName: profile.fullName,
+        email: profile.email,
+        phoneNumber: "",
         onboardingCompleted: false,
         onboarding: null,
       };
-
-      // Navigate directly to onboarding — OTP is handled by Firebase email verification (future sprint)
-      navigation.navigate("Welcome", { user });
-
+      await AsyncStorage.setItem("userSession", JSON.stringify(user));
+      navigation.reset({ index: 0, routes: [{ name: "Welcome", params: { user } }] });
     } catch (error) {
-      console.error("Signup failed with error:", error);
-      let message = "Could not create account. Please try again.";
-
-      switch (error.code) {
-        case "auth/email-already-in-use":
-          message = "An account with this email already exists.";
-          break;
-        case "auth/invalid-email":
-          message = "Please enter a valid email address.";
-          break;
-        case "auth/weak-password":
-          message = "Password is too weak. Use at least 6 characters.";
-          break;
-        case "auth/network-request-failed":
-          message = "No internet connection. Please check your network.";
-          break;
-        case "auth/operation-not-allowed":
-          message = "Email/password sign-up is not enabled. Contact support.";
-          break;
-      }
-
-      Alert.alert("Signup Failed", message);
+      const messages = {
+        "auth/email-already-in-use": "An account with this email already exists. Please log in.",
+        "auth/invalid-email": "Enter a valid email address.",
+        "auth/weak-password": "Use a password with at least 6 characters.",
+        "auth/network-request-failed": "Check your internet connection and try again.",
+      };
+      Alert.alert("Create account", messages[error?.code] || "Your account could not be created. Please try again.");
     } finally {
+      inProgress.current = false;
       setLoading(false);
     }
   };
 
-  const STATUS_BAR_HEIGHT = Platform.OS === "ios" ? 47 : (StatusBar.currentHeight || 24);
+  const handleGoogleSignup = async () => {
+    if (inProgress.current) return;
+    inProgress.current = true;
+    setGoogleLoading(true);
+    try {
+      const user = await signInWithGoogle();
+      if (!user) return;
+      await AsyncStorage.setItem("userSession", JSON.stringify(user));
+      navigation.reset({ index: 0, routes: [{ name: user.onboardingCompleted ? "Dashboard" : "Welcome", params: { user } }] });
+    } catch (error) {
+      Alert.alert("Google sign-in", error.message);
+    } finally {
+      inProgress.current = false;
+      setGoogleLoading(false);
+    }
+  };
 
+  const disabled = loading || googleLoading;
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <BackgroundGrid type="signup" />
+    <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <View style={styles.intro}>
+            <Text style={styles.eyebrow}>POCKETSMART</Text>
+            <Text style={styles.title}>Create your{`\n`}account.</Text>
+            <Text style={styles.subtitle}>A few details and you can start your plan.</Text>
+          </View>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: "transparent" }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          style={{ flex: 1, backgroundColor: "transparent" }}
-          contentContainerStyle={[styles.scrollContainer, { paddingTop: STATUS_BAR_HEIGHT + 16 }]}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <SignupHeader onBackPress={() => navigation.navigate("Login")} />
-
-          {/* Signup Form Card */}
-          <BlurView intensity={100} tint="dark" style={styles.card}>
-
-            <Text style={styles.inputLabel}>Full Name</Text>
-            <PremiumInput
-              icon="user"
-              placeholder="Aarav Sharma"
-              value={fullName}
-              onChangeText={setFullName}
-            />
-
-            <Text style={styles.inputLabel}>Phone Number</Text>
-            <PremiumInput
-              icon="phone"
-              placeholder="9876543210"
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              keyboardType="phone-pad"
-            />
-
-            <Text style={styles.inputLabel}>Email Address</Text>
-            <PremiumInput
-              icon="mail"
-              placeholder="aarav@pocketsmart.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-
-            <Text style={styles.inputLabel}>Password</Text>
-            <PremiumInput
-              icon="lock"
-              placeholder="••••••••••••"
-              value={password}
-              onChangeText={setPassword}
-              isPassword={true}
-            />
-
-            <Text style={styles.inputLabel}>Confirm Password</Text>
-            <PremiumInput
-              icon="lock"
-              placeholder="••••••••••••"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              isPassword={true}
-            />
-
-            {/* Signup Button */}
-            <SignupButton onPress={handleSignup} loading={loading} />
-
-            {/* Login redirect */}
-            <SignupLoginRedirect onLoginPress={() => navigation.navigate("Login")} />
-
-            {/* Trust Badge */}
-            <SignupTrustBadge />
-
-          </BlurView>
+          <View style={styles.form}>
+            <Input label="Full name" value={fullName} onChangeText={setFullName} placeholder="Aarav Sharma" />
+            <Input label="Email" value={email} onChangeText={setEmail} placeholder="aarav@example.com" keyboardType="email-address" autoCapitalize="none" />
+            <Input label="Password" value={password} onChangeText={setPassword} placeholder="••••••••" secureTextEntry autoCapitalize="none" />
+            <Input label="Confirm password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="••••••••" secureTextEntry autoCapitalize="none" />
+            <TouchableOpacity accessibilityRole="button" disabled={disabled} onPress={handleSignup} style={[styles.primaryButton, disabled && styles.disabled]}>{loading ? <ActivityIndicator color="#F8F5EE" /> : <Text style={styles.primaryButtonText}>Continue</Text>}</TouchableOpacity>
+            <View style={styles.divider}><View style={styles.dividerLine} /><Text style={styles.dividerText}>or</Text><View style={styles.dividerLine} /></View>
+            <TouchableOpacity accessibilityLabel="Continue with Google" accessibilityRole="button" disabled={disabled} onPress={handleGoogleSignup} style={[styles.googleButton, disabled && styles.disabled]}>{googleLoading ? <ActivityIndicator color="#302C27" /> : <><Image source={require("../../../assets/images/google_logo_transparent.png")} style={styles.googleIcon} /><Text style={styles.googleText}>Continue with Google</Text></>}</TouchableOpacity>
+          </View>
+          <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate("Login")} style={styles.loginLink}><Text style={styles.loginText}>Already have an account? <Text style={styles.loginTextStrong}>Log in</Text></Text></TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 }

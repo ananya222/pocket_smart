@@ -1,275 +1,172 @@
-// LoginScreen.js
-import React, { useState, useRef } from "react";
+import React, { useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StatusBar,
-  Platform,
-  SafeAreaView,
   ActivityIndicator,
-  useWindowDimensions,
-  Animated,
-  Keyboard,
-  TextInput,
+  Alert,
   Image,
   KeyboardAvoidingView,
-  Alert,
+  Platform,
+  ScrollView,
+  StatusBar,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { BlurView } from "expo-blur";
-import { Feather, FontAwesome } from "@expo/vector-icons";
-import { styles } from "./LoginScreen.styles";
-import BackgroundGrid from "../../../components/BackgroundGrid/BackgroundGrid";
-import PremiumInput from "../../../components/PremiumInput/PremiumInput";
-
-import LoginHeader from "./components/LoginHeader/LoginHeader";
-import LoginRememberMeRow from "./components/LoginRememberMeRow/LoginRememberMeRow";
-import LoginButton from "./components/LoginButton/LoginButton";
-import LoginSocialRow from "./components/LoginSocialRow/LoginSocialRow";
-import LoginFooterActions from "./components/LoginFooterActions/LoginFooterActions";
-import LoginTrustBadge from "./components/LoginTrustBadge/LoginTrustBadge";
-
+import { SafeAreaView } from "react-native-safe-area-context";
 import { auth, firestore } from "../../../config";
+import { signInWithGoogle } from "../../../services/googleLogin";
+import { colors } from "../../../theme/theme";
+import { styles } from "./LoginScreen.styles";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [keepLoggedIn, setKeepLoggedIn] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const loginInProgress = useRef(false);
 
-  // Animated button scale spring values
-  const loginScale = useRef(new Animated.Value(1)).current;
-  const googleScale = useRef(new Animated.Value(1)).current;
-  const appleScale = useRef(new Animated.Value(1)).current;
-
-  // Memoized styles
-  const loginScaleStyle = React.useMemo(() => ({
-    transform: [{ scale: loginScale }],
-  }), [loginScale]);
-
-  const googleScaleStyle = React.useMemo(() => ({
-    transform: [{ scale: googleScale }],
-  }), [googleScale]);
-
-  const appleScaleStyle = React.useMemo(() => ({
-    transform: [{ scale: appleScale }],
-  }), [appleScale]);
-
-  // Haptic spring scale animation helpers
-  const handlePressIn = (scaleVar) => {
-    Animated.spring(scaleVar, {
-      toValue: 0.94,
-      useNativeDriver: true,
-      speed: 40,
-      bounciness: 4,
-    }).start();
-  };
-
-  const handlePressOut = (scaleVar) => {
-    Animated.spring(scaleVar, {
-      toValue: 1,
-      useNativeDriver: true,
-      speed: 40,
-      bounciness: 4,
-    }).start();
-  };
-
-  const handleDevBypass = async () => {
-    const mockUser = {
-      id: "dev-bypass-999",
-      fullName: "Aarav Sharma",
-      email: "aarav@pocketsmart.com",
-      phoneNumber: "9876543210",
-      onboardingCompleted: true,
-      onboarding: {
-        allowance: "5,000",
-        frequency: "Monthly",
-        goalName: "Sony Headphones",
-        targetAmount: "8,000",
-        timeToReach: 6,
-      },
+  const finishLogin = async (firebaseUser) => {
+    const userDoc = await firestore().collection("users").doc(firebaseUser.uid).get();
+    const profile = userDoc.exists ? userDoc.data() : {};
+    const user = {
+      id: firebaseUser.uid,
+      fullName: profile.fullName || firebaseUser.displayName || "",
+      email: firebaseUser.email,
+      phoneNumber: profile.phoneNumber || "",
+      onboardingCompleted: profile.onboardingCompleted || false,
+      onboarding: profile.onboarding || null,
     };
-    if (keepLoggedIn) {
-      await AsyncStorage.setItem("userSession", JSON.stringify(mockUser));
-    } else {
-      await AsyncStorage.removeItem("userSession");
-    }
-    navigation.navigate("Dashboard", { user: mockUser });
+    await AsyncStorage.setItem("userSession", JSON.stringify(user));
+    navigation.reset({
+      index: 0,
+      routes: [{ name: user.onboardingCompleted ? "Dashboard" : "Welcome", params: { user } }],
+    });
   };
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Please enter your details");
+    if (loginInProgress.current) return;
+    if (!email.trim() || !password) {
+      Alert.alert("Log in", "Enter your email and password to continue.");
       return;
     }
-
+    loginInProgress.current = true;
     setLoading(true);
     try {
-      // Sign in with Firebase Authentication
-      const userCredential = await auth().signInWithEmailAndPassword(
-        email.trim(),
-        password.trim()
-      );
-
-      const firebaseUser = userCredential.user;
-
-      // Fetch user profile from Firestore
-      const userDoc = await firestore()
-        .collection("users")
-        .doc(firebaseUser.uid)
-        .get();
-
-      let userProfile = {};
-      if (userDoc.exists) {
-        userProfile = userDoc.data();
-      }
-
-      const user = {
-        id: firebaseUser.uid,
-        fullName: userProfile.fullName || firebaseUser.displayName || "",
-        email: firebaseUser.email,
-        phoneNumber: userProfile.phoneNumber || "",
-        onboardingCompleted: userProfile.onboardingCompleted || false,
-        onboarding: userProfile.onboarding || null,
-      };
-
-      if (keepLoggedIn) {
-        await AsyncStorage.setItem("userSession", JSON.stringify(user));
-      } else {
-        await AsyncStorage.removeItem("userSession");
-      }
-
-      if (user.onboardingCompleted) {
-        navigation.navigate("Dashboard", { user });
-      } else {
-        navigation.navigate("Welcome", { user });
-      }
+      const credential = await auth().signInWithEmailAndPassword(email.trim(), password);
+      await finishLogin(credential.user);
     } catch (error) {
-      console.error("Login failed with error:", error);
-      let message = "An unexpected error occurred. Please try again.";
-
-      switch (error.code) {
-        case "auth/user-not-found":
-        case "auth/wrong-password":
-        case "auth/invalid-credential":
-          message = "Incorrect email or password.";
-          break;
-        case "auth/invalid-email":
-          message = "Please enter a valid email address.";
-          break;
-        case "auth/user-disabled":
-          message = "This account has been disabled.";
-          break;
-        case "auth/too-many-requests":
-          message = "Too many failed attempts. Please try again later.";
-          break;
-        case "auth/network-request-failed":
-          message = "No internet connection. Please check your network.";
-          break;
-      }
-
-      Alert.alert("Login Failed", message, [
-        { text: "OK" },
-        ...(error.code === "auth/network-request-failed"
-          ? [{ text: "Enter Offline Mode", onPress: handleDevBypass }]
-          : []),
-      ]);
+      const messages = {
+        "auth/user-not-found": "Incorrect email or password.",
+        "auth/wrong-password": "Incorrect email or password.",
+        "auth/invalid-credential": "Incorrect email or password.",
+        "auth/invalid-email": "Enter a valid email address.",
+        "auth/too-many-requests": "Too many attempts. Please try again later.",
+        "auth/network-request-failed": "Check your internet connection and try again.",
+      };
+      Alert.alert("Unable to log in", messages[error.code] || "Please try again.");
     } finally {
+      loginInProgress.current = false;
       setLoading(false);
     }
   };
 
-  // Safe area / notch calculation for immersive status bar
-  const STATUS_BAR_HEIGHT = Platform.OS === "ios" ? 47 : (StatusBar.currentHeight || 24);
+  const handleGoogleLogin = async () => {
+    if (loginInProgress.current) return;
+    loginInProgress.current = true;
+    setGoogleLoading(true);
+    try {
+      const user = await signInWithGoogle();
+      if (user) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: user.onboardingCompleted ? "Dashboard" : "Welcome", params: { user } }],
+        });
+      }
+    } catch (error) {
+      Alert.alert("Google sign-in", error.message);
+    } finally {
+      loginInProgress.current = false;
+      setGoogleLoading(false);
+    }
+  };
 
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert("Reset your password", "Enter your email first, then select Forgot password.");
+      return;
+    }
+    try {
+      await auth().sendPasswordResetEmail(email.trim());
+      Alert.alert("Check your inbox", "We sent a password reset link to your email.");
+    } catch (error) {
+      Alert.alert("Password reset", error.code === "auth/invalid-email" ? "Enter a valid email address." : "We could not send the reset link. Please try again.");
+    }
+  };
+
+  const disabled = loading || googleLoading;
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <View style={styles.intro}>
+            <Text style={styles.eyebrow}>POCKETSMART</Text>
+            <Text style={styles.title}>Welcome back.</Text>
+            <Text style={styles.subtitle}>Log in to continue managing your money.</Text>
+          </View>
 
-      {/* Background Scattered Themed Icons */}
-      <BackgroundGrid type="login" />
-
-      <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: "transparent" }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          style={{ flex: 1, backgroundColor: "transparent" }}
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Top safety spacer to push the card away from the notification bar */}
-          <View style={{ height: STATUS_BAR_HEIGHT + 16 }} />
-
-          <BlurView intensity={100} tint="dark" style={styles.card}>
-
-            {/* Header Row inside the Card */}
-            <LoginHeader title="Welcome to\nPocketSmart" description="Your complete financial dashboard." />
-
-            {/* Email or Username Field */}
-            <Text style={styles.inputLabel}>Email</Text>
-            <PremiumInput
-              icon="user"
-              placeholder="sarah.connor@email.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
+          <View style={styles.form}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              accessibilityLabel="Email"
               autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              onChangeText={setEmail}
+              placeholder="alex@example.com"
+              placeholderTextColor="#8A8177"
+              style={styles.input}
+              value={email}
             />
 
-            {/* Password Field */}
-            <Text style={styles.inputLabel}>Password</Text>
-            <PremiumInput
-              icon="lock"
-              placeholder="••••••••••••"
-              value={password}
+            <View style={styles.passwordLabelRow}>
+              <Text style={styles.label}>Password</Text>
+              <TouchableOpacity accessibilityRole="button" onPress={handleForgotPassword}>
+                <Text style={styles.forgot}>Forgot password?</Text>
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              accessibilityLabel="Password"
+              autoComplete="current-password"
               onChangeText={setPassword}
-              isPassword={true}
+              placeholder="••••••••"
+              placeholderTextColor="#8A8177"
+              secureTextEntry
+              style={styles.input}
+              value={password}
             />
 
-            {/* Remember Me & Forgot Password Row */}
-            <LoginRememberMeRow
-              keepLoggedIn={keepLoggedIn}
-              setKeepLoggedIn={setKeepLoggedIn}
-              onForgotPassword={() => {}}
-            />
+            <TouchableOpacity accessibilityRole="button" disabled={disabled} onPress={handleLogin} style={[styles.primaryButton, disabled && styles.buttonDisabled]}>
+              {loading ? <ActivityIndicator color="#F8F5EE" /> : <Text style={styles.primaryButtonText}>Log in</Text>}
+            </TouchableOpacity>
 
-            {/* Login Button */}
-            <LoginButton
-              onPress={handleLogin}
-              handlePressIn={handlePressIn}
-              handlePressOut={handlePressOut}
-              loginScale={loginScale}
-              loginScaleStyle={loginScaleStyle}
-              loading={loading}
-            />
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
-            {/* Social Login Row */}
-            <LoginSocialRow
-              handlePressIn={handlePressIn}
-              handlePressOut={handlePressOut}
-              googleScale={googleScale}
-              googleScaleStyle={googleScaleStyle}
-              appleScale={appleScale}
-              appleScaleStyle={appleScaleStyle}
-            />
+            <TouchableOpacity accessibilityLabel="Continue with Google" accessibilityRole="button" disabled={disabled} onPress={handleGoogleLogin} style={[styles.googleButton, disabled && styles.buttonDisabled]}>
+              {googleLoading ? <ActivityIndicator color="#302C27" /> : <><Image source={require("../../../assets/images/google_logo_transparent.png")} style={styles.googleIcon} /><Text style={styles.googleButtonText}>Continue with Google</Text></>}
+            </TouchableOpacity>
+          </View>
 
-          </BlurView>
-
-          {/* Sign Up & Dev Bypass - Outside card */}
-          <LoginFooterActions
-            navigation={navigation}
-            onDevBypass={handleDevBypass}
-          />
-
-          {/* Security Trust Badge */}
-          <LoginTrustBadge />
+          <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate("Signup")} style={styles.signupLink}>
+            <Text style={styles.signupText}>New to PocketSmart? <Text style={styles.signupTextStrong}>Create an account</Text></Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 }

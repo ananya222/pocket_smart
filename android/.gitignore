@@ -14,3 +14,7 @@ local.properties
 
 # Bundle artifacts
 *.jsbundle
+
+# Local Android release signing credentials
+app/release-upload.keystore
+keystore.properties

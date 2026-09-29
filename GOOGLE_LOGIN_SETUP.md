@@ -14,7 +14,11 @@ profile, and sends returning users to Dashboard or new users to Welcome.
 3. Download the updated `google-services.json` and replace both
    `google-services.json` and `android/app/google-services.json`.
    The app reads the type-3 web OAuth client ID from this file; do not use the
-   Android OAuth client ID. The currently supplied files have no OAuth clients.
+   Android OAuth client ID. The supplied files currently have a type-3 web
+   client and an Android client for SHA-1
+   `FA:13:5D:81:AE:22:62:7C:67:B5:9C:81:B5:11:19:39:D1:0F:D8:63`. This does not
+   match the local debug certificate below; register every certificate used to
+   sign installed builds, then download the updated config.
 4. Build and install a new Android binary. A Metro reload or Expo Go cannot add
    this native dependency.
 

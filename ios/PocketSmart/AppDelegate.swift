@@ -165,7 +165,7 @@ struct ImportTransactionMessageIntent: AppIntent {
   @Parameter(title: "Received date") var receivedAt: Date
 
   static var parameterSummary: some ParameterSummary {
-    Summary("Import \(.$message) received on \(.$receivedAt)")
+    Summary("Import \(\.$message) received on \(\.$receivedAt)")
   }
 
   func perform() async throws -> some IntentResult & ProvidesDialog {

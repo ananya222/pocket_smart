@@ -1,0 +1,4 @@
+# Xcode and CocoaPods source these files on macOS, including Windows EAS uploads.
+*.sh text eol=lf
+ios/.xcode.env text eol=lf
+ios/.xcode.env.* text eol=lf

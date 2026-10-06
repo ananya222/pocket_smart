@@ -13,8 +13,8 @@ const isTransientCredentialError = (error) => {
 };
 
 export async function signInWithGoogle() {
-  if (Platform.OS !== "android") {
-    throw new Error("Google login is currently available on Android only.");
+  if (Platform.OS !== "android" && Platform.OS !== "ios") {
+    throw new Error("Google login is available in the Android and iOS apps only.");
   }
   const client = googleServices.client.find(
     (entry) => entry.client_info.android_client_info?.package_name === "com.pocketsmart.app"
@@ -23,14 +23,17 @@ export async function signInWithGoogle() {
   if (!webClientId) {
     throw new Error("Google login setup is incomplete. Please contact support.");
   }
-  // Load only on Android so the existing web preview can still render.
+  // Load only on native platforms so the web preview can still render.
   const { GoogleSignin, statusCodes } = require("@react-native-google-signin/google-signin");
   if (!configured) {
+    // On iOS, the SDK reads the iOS client ID from GoogleService-Info.plist.
     GoogleSignin.configure({ webClientId });
     configured = true;
   }
   try {
-    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    if (Platform.OS === "android") {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    }
     // Always offer account selection, including after a Firebase-only logout.
     await GoogleSignin.signOut();
     const response = await GoogleSignin.signIn();

@@ -2,7 +2,7 @@
   "expo": {
     "name": "PocketSmart",
     "slug": "my-app",
-    "version": "1.0.3",
+    "version": "1.0.5",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "backgroundColor": "#F7F7F5",
@@ -30,7 +30,8 @@
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
       "@react-native-google-signin/google-signin",
-      "./plugins/with-ios27-scene-support"
+      "./plugins/with-ios27-scene-support",
+      "./plugins/with-ios-shortcut-import"
     ],
     "extra": {
       "expo-navigation-bar": {

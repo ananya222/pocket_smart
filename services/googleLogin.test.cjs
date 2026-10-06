@@ -13,8 +13,8 @@ const profileSource = babel.transformSync(fs.readFileSync(`${__dirname}/firebase
   plugins: ['@babel/plugin-transform-modules-commonjs'],
 }).code;
 
-function setup({ profile, cancelled = false, configured = true, error, firstError } = {}) {
-  const calls = { writes: 0, auth: 0 };
+function setup({ platform = 'android', profile, cancelled = false, configured = true, error, firstError } = {}) {
+  const calls = { writes: 0, auth: 0, playServices: 0, nativeLoads: 0 };
   const firebaseUser = { uid: 'user-1', displayName: 'Google Name', email: 'test@example.com' };
   const auth = Object.assign(() => ({ signInWithCredential: async () => {
     calls.auth++;
@@ -38,7 +38,7 @@ function setup({ profile, cancelled = false, configured = true, error, firstErro
     }),
   }), { FieldValue: { serverTimestamp: () => 'timestamp' } });
   const mocks = {
-    'react-native': { Platform: { OS: 'android' } },
+    'react-native': { Platform: { OS: platform } },
     '../config': { auth, firestore },
     '../google-services.json': { client: [{
       client_info: { android_client_info: { package_name: 'com.pocketsmart.app' } },
@@ -46,7 +46,8 @@ function setup({ profile, cancelled = false, configured = true, error, firstErro
     }] },
     '@react-native-google-signin/google-signin': {
       GoogleSignin: {
-        configure() {}, hasPlayServices: async () => true, signOut: async () => {},
+        configure(options) { calls.configuration = options; },
+        hasPlayServices: async () => { calls.playServices++; return true; }, signOut: async () => {},
         signIn: async () => cancelled ? { type: 'cancelled' } : { type: 'success', data: { idToken: 'token' } },
         getTokens: async () => ({ idToken: 'token', accessToken: 'access-token' }),
       },
@@ -62,7 +63,10 @@ function setup({ profile, cancelled = false, configured = true, error, firstErro
   };
   vm.runInNewContext(profileSource, profileContext);
   mocks['./firebaseProfile'] = profileContext.exports;
-  const context = { exports: {}, require: (name) => mocks[name], setTimeout };
+  const context = { exports: {}, require: (name) => {
+    if (name === '@react-native-google-signin/google-signin') calls.nativeLoads++;
+    return mocks[name];
+  }, setTimeout };
   vm.runInNewContext(source, context);
   return { run: context.exports.signInWithGoogle, calls };
 }
@@ -73,6 +77,31 @@ test('new users receive a profile and need onboarding', async () => {
   assert.equal(user.id, 'user-1');
   assert.equal(user.onboardingCompleted, false);
   assert.equal(calls.writes, 1);
+  assert.equal(calls.playServices, 1);
+});
+
+test('iOS signs into Firebase and creates a profile without checking Play Services', async () => {
+  const { run, calls } = setup({ platform: 'ios' });
+  const user = await run();
+  assert.equal(user.id, 'user-1');
+  assert.equal(calls.auth, 1);
+  assert.equal(calls.writes, 1);
+  assert.equal(calls.playServices, 0);
+  assert.equal(calls.configuration.webClientId, 'web-client');
+});
+
+test('iOS cancellation does not authenticate or create a profile', async () => {
+  const { run, calls } = setup({ platform: 'ios', cancelled: true });
+  assert.equal(await run(), null);
+  assert.equal(calls.auth, 0);
+  assert.equal(calls.writes, 0);
+});
+
+test('web rejects sign-in before loading the native SDK', async () => {
+  const { run, calls } = setup({ platform: 'web' });
+  await assert.rejects(run, /Android and iOS apps only/);
+  assert.equal(calls.nativeLoads, 0);
+  assert.equal(calls.auth, 0);
 });
 test('existing profile and onboarding are preserved', async () => {
   const profile = { fullName: 'Custom Name', onboardingCompleted: true, onboarding: { allowance: 500 } };

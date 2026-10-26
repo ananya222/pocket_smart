@@ -325,3 +325,41 @@
   orientation(); openHash();
  });
 })();
+
+(() => {
+  const demo = document.querySelector('[data-braille-demo]');
+  if (!demo) return;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const pause = demo.querySelector('[data-braille-pause]');
+  let step = 0, timer, paused = reduced.matches;
+  const titles = ['Compare the translation.', 'Checking each word…', 'Two errors flagged.', 'Review the corrections.'];
+  const statuses = ['Three English words and their Braille translations.', 'Comparing the prepared English and Braille pairs.', 'A substituted letter and a missing letter need review.', 'The corrected Braille now matches the English examples.'];
+  const notes = ['Watch the comparison, error report, and corrections.', 'Checking letter sequences against the source text.', 'cat: d instead of t. sun: the letter u is missing. dog matches.', 'cat → ⠉⠁⠞ · dog → ⠙⠕⠛ · sun → ⠎⠥⠝'];
+  function render() {
+    demo.querySelector('[data-braille-step]').textContent = `0${step + 1} / 04`;
+    demo.querySelector('[data-braille-title]').textContent = titles[step];
+    demo.querySelector('[data-braille-status]').textContent = statuses[step];
+    demo.querySelector('[data-braille-note]').textContent = notes[step];
+    demo.querySelectorAll('[data-braille-result]').forEach((result, i) => {
+      result.textContent = step === 0 ? 'Waiting' : step === 1 ? 'Checking…' : i === 1 ? 'Matches' : step === 2 ? (i === 0 ? 'Wrong letter' : 'Missing letter') : 'Corrected';
+      result.dataset.error = String(step === 2 && i !== 1);
+    });
+    const cat = demo.querySelector('[data-braille-cell="0"]');
+    const sun = demo.querySelector('[data-braille-cell="2"]');
+    cat.textContent = step === 3 ? '⠉⠁⠞' : '⠉⠁⠙';
+    cat.setAttribute('aria-label', step === 3 ? 'Braille letters c a t' : 'Braille letters c a d');
+    sun.textContent = step === 3 ? '⠎⠥⠝' : '⠎⠝';
+    sun.setAttribute('aria-label', step === 3 ? 'Braille letters s u n' : 'Braille letters s n, missing u');
+    pause.textContent = paused ? 'Play' : 'Pause';
+    pause.setAttribute('aria-pressed', String(paused));
+  }
+  function schedule() {
+    clearTimeout(timer);
+    if (!paused) timer = setTimeout(() => { step = (step + 1) % 4; render(); schedule(); }, step === 2 || step === 3 ? 4000 : 2400);
+  }
+  pause.addEventListener('click', () => { paused = !paused; render(); schedule(); });
+  demo.querySelector('[data-braille-replay]').addEventListener('click', () => { step = 0; paused = reduced.matches; render(); schedule(); });
+  reduced.addEventListener('change', () => { paused = reduced.matches; render(); schedule(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) clearTimeout(timer); else schedule(); });
+  render(); schedule();
+})();

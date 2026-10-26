@@ -28,13 +28,13 @@
 <article class="app-story" id="braille"><div class="braille-demo" data-braille-demo>
   <div class="braille-demo-top"><span>English → Braille</span><span data-braille-step>01 / 04</span></div>
   <p class="overline">Prepared demonstration · uncontracted examples</p>
-  <h3 data-braille-title>Compare the translation.</h3>
-  <p class="braille-demo-status" data-braille-status>Three English words and their Braille translations.</p>
+  <h3 data-braille-title>Start with English text.</h3>
+  <p class="braille-demo-status" data-braille-status>Source text: cat · dog · sun</p>
   <div class="braille-demo-labels"><span>English</span><span>Braille</span><span>Review</span></div>
   <div class="braille-demo-row"><strong>cat</strong><span class="braille-sample" data-braille-cell="0" aria-label="Braille letters c a d">⠉⠁⠙</span><span data-braille-result="0">Waiting</span></div>
   <div class="braille-demo-row"><strong>dog</strong><span class="braille-sample" aria-label="Braille letters d o g">⠙⠕⠛</span><span data-braille-result="1">Waiting</span></div>
   <div class="braille-demo-row"><strong>sun</strong><span class="braille-sample" data-braille-cell="2" aria-label="Braille letters s n, missing u">⠎⠝</span><span data-braille-result="2">Waiting</span></div>
-  <p class="braille-demo-note" data-braille-note>Watch the comparison, error report, and corrections.</p>
+  <p class="braille-demo-note" data-braille-note>English text goes in first. Watch the Braille translation appear next.</p>
   <div class="braille-demo-controls"><button type="button" data-braille-pause aria-pressed="false">Pause</button><button type="button" data-braille-replay>Replay</button></div>
   <p class="braille-demo-caption">Illustrative walkthrough with prepared results, not a live validator.</p>
 </div><div class="prose"><p class="overline">Windows application · Accessibility</p><h2>Braille Validator</h2><p>English text can contain errors after translation into Braille. Working with <strong class="key-point"><em>Mitra Jyothi</em></strong>, I developed an <strong class="key-point"><em>English-to-Braille validator</em></strong> to flag potential <strong class="key-point"><em>Unified English Braille</em></strong> errors and support the proofreading process.</p><p>The work sits within a wider transcription workflow: access to Duxbury transcription software, Kannada OCR through Trestle Labs’ KIBO platform, and PDF preparation using Adobe tools. The public repository includes a Windows application, documentation, examples, and demos.</p><details><summary>Testing and next steps <span aria-hidden="true">+</span></summary><div class="detail-content"><p>In initial testing, the validator detected <strong class="key-point"><em>more than 70%</em></strong> of translation errors. It is a proofreading aid, with <strong class="key-point"><em>human review</em></strong> part of the workflow.</p><p>The current validator focuses on <strong class="key-point"><em>English Braille</em></strong>. Mathematics and Kannada Braille are future directions, not current features.</p></div></details></div></article>

@@ -85,10 +85,10 @@ body{background-color:var(--paper);background-image:radial-gradient(ellipse at 9
 /* Portfolio workspace: a quiet rail and focused content, rather than a long sequence of spreads. */
 @media(min-width:901px){
 .site-header{position:relative;width:100%;border-bottom:1px solid var(--line);background:var(--paper);z-index:20}
-.navigation.frame{width:min(1120px,calc(100% - 96px));min-height:94px;margin-inline:auto;padding:0;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:24px}
+.navigation.frame{width:min(1760px,calc(100% - 96px));min-height:94px;margin-inline:auto;padding:0;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:24px}
 .wordmark{font:italic 24px/1.3 var(--serif);letter-spacing:-.04em;white-space:nowrap;max-width:none}
 #site-nav{display:flex;flex-direction:row;align-items:center;gap:20px;width:auto}#site-nav a{font-size:14px;padding-block:9px}
-body>main.frame,body>footer.frame{width:min(1120px,calc(100% - 96px));margin-inline:auto}
+body>main.frame,body>footer.frame{width:min(1760px,calc(100% - 96px));margin-inline:auto}
 }
 
 .page-heading{padding:48px 0 35px}.page-heading h1{font-size:clamp(48px,5.3vw,72px);margin-bottom:18px}.page-deck{font-size:21px;max-width:650px;line-height:1.55}
@@ -153,3 +153,12 @@ body{background-color:var(--paper);background-image:none;background-attachment:s
 @media(max-width:900px){.honor-story{gap:28px}.honor-copy h2{font-size:29px}.honor-distinction{font-size:29px}}
 @media(max-width:680px){.honor-story{grid-template-columns:minmax(0,1fr);gap:18px;padding:22px 0 26px}.honor-story:nth-child(n) .honor-visual,.honor-story:nth-child(n) .honor-copy{order:initial}.honor-visual{padding:20px}.honor-visual .story-number{font-size:28px;margin-bottom:12px}.honor-copy h2{font-size:28px;margin-bottom:10px}.honor-distinction{font-size:28px}}
 @media print{.honor-story{break-inside:avoid}.honor-visual{background:none}}
+
+/* Use wider screens without stretching paragraphs across the full page. */
+@media(min-width:1101px){.about-layout{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:64px}.about-prose{max-width:none}.about-aside .serif-intro{max-width:560px;font-size:30px}.education-notes{max-width:560px}.alternating-list .alternating-story:nth-of-type(n){gap:64px}.honor-story{gap:64px}.story-copy,.honor-copy{max-width:760px}.app-story .prose{max-width:760px}}
+
+:root{--page-gutter:clamp(16px,3vw,72px)}
+.navigation.frame,body>main.frame,body>footer.frame{width:min(1760px,calc(100% - var(--page-gutter)*2));margin-inline:auto}
+@media print{body>main.frame,body>footer.frame{width:100%;margin:0}}
+
+@media(max-width:680px){.mystera-plate::before{inset:-2% 6%}}

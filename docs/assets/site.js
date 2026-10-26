@@ -190,9 +190,9 @@
     const context = gsap.context(() => {
       gsap.from(titleWords, {yPercent: 115, rotation: 3, opacity: 0, duration: 1.05, stagger: 0.075, ease: 'power4.out', clearProps: 'all'});
       gsap.from('.home-introduction, .page-deck, .quiet-note', {y: 26, opacity: 0, delay: 0.22, duration: 0.9, ease: 'power3.out', clearProps: 'all'});
-      const entries = document.querySelectorAll('.research-entry:not([data-focus-panel]), .project-story:not([data-focus-panel]), .app-story, .academic-record, .featured-product, .work-directory, .about-aside, .about-prose, .award-row, .resume-section, .next-section, main > .source-note');
+      const entries = document.querySelectorAll('.research-entry:not([data-focus-panel]), .project-story:not([data-focus-panel]), .app-story, .academic-record, .featured-product, .work-directory, .about-aside, .about-prose, .award-row, .honor-story, .resume-section, .next-section, main > .source-note');
       entries.forEach((entry, index) => {
-        const targets = entry.matches('.featured-product, .work-directory, .about-aside, .about-prose, .award-row, .source-note') ? [entry] : [...entry.children];
+        const targets = entry.matches('.featured-product, .work-directory, .about-aside, .about-prose, .award-row, .honor-story, .source-note') ? [entry] : [...entry.children];
         const settings = {y: 52, opacity: 0, duration: 0.95, stagger: 0.13, ease: 'power3.out', clearProps: 'all'};
         if (window.ScrollTrigger) {
           gsap.from(targets, {...settings, scrollTrigger: {trigger: entry, start: 'top 91%', once: true}});

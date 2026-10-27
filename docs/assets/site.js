@@ -192,6 +192,7 @@
       gsap.from('.home-introduction, .page-deck, .quiet-note', {y: 26, opacity: 0, delay: 0.22, duration: 0.9, ease: 'power3.out', clearProps: 'all'});
       const entries = document.querySelectorAll('.research-entry:not([data-focus-panel]), .project-story:not([data-focus-panel]), .app-story, .academic-record, .featured-product, .work-directory, .about-aside, .about-prose, .award-row, .honor-story, .resume-section, .next-section, main > .source-note');
       entries.forEach((entry, index) => {
+        if (entry.matches('.alternating-story, .honor-story')) return;
         const targets = entry.matches('.featured-product, .work-directory, .about-aside, .about-prose, .award-row, .honor-story, .source-note') ? [entry] : [...entry.children];
         const settings = {y: 52, opacity: 0, duration: 0.95, stagger: 0.13, ease: 'power3.out', clearProps: 'all'};
         if (window.ScrollTrigger) {
@@ -366,4 +367,137 @@
   reduced.addEventListener('change', () => { paused = reduced.matches; render(); schedule(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) clearTimeout(timer); else schedule(); });
   render(); schedule();
+})();
+
+// Scroll-led chapters retain the document order and fall back to normal reading.
+(() => {
+  if (!window.gsap || !window.ScrollTrigger) return;
+  const media = gsap.matchMedia();
+  media.add('(prefers-reduced-motion: no-preference)', () => {
+    const context = gsap.context(() => {
+      document.querySelectorAll('.study-theme, .honor-distinction, .about-aside .serif-intro, .app-story .prose h2, .project-visual h2').forEach(text => {
+        text.classList.add('scroll-ink');
+        gsap.fromTo(text, {'--ink-progress': '0%'}, {'--ink-progress': '100%', ease: 'none', scrollTrigger: {trigger: text, start: 'top 88%', end: 'top 48%', scrub: .4}});
+      });
+    });
+    return () => { context.revert(); document.querySelectorAll('.scroll-ink').forEach(text => text.classList.remove('scroll-ink')); };
+  });
+  media.add('(min-width: 1100px) and (min-height: 800px) and (prefers-reduced-motion: no-preference)', () => {
+    const track = document.querySelector('.research-list, .projects-list, .honors-stories');
+    if (!track) return;
+    const cards = [...track.children];
+    const section = document.createElement('section');
+    section.className = 'chapter-gallery';
+    section.setAttribute('aria-label', document.body.dataset.page === 'honors' ? 'Recognition chapters' : 'Work chapters');
+    const toolbar = document.createElement('div');
+    toolbar.className = 'chapter-toolbar';
+    const hint = document.createElement('p');
+    hint.textContent = 'Scroll to explore';
+    const count = document.createElement('span');
+    count.className = 'chapter-count';
+    count.setAttribute('aria-live', 'polite');
+    const actions = document.createElement('div');
+    actions.className = 'chapter-actions';
+    const previous = document.createElement('button');
+    previous.type = 'button'; previous.textContent = '←'; previous.setAttribute('aria-label', 'Previous chapter');
+    const next = document.createElement('button');
+    next.type = 'button'; next.textContent = '→'; next.setAttribute('aria-label', 'Next chapter');
+    actions.append(count, previous, next);
+    toolbar.append(hint, actions);
+    const viewport = document.createElement('div');
+    viewport.className = 'chapter-viewport';
+    const progress = document.createElement('div');
+    progress.className = 'chapter-progress';
+    progress.setAttribute('aria-hidden', 'true');
+    const fill = document.createElement('span');
+    progress.append(fill);
+    track.before(section);
+    section.append(toolbar, viewport, progress);
+    viewport.append(track);
+    track.classList.add('chapter-track');
+    let tween, active = 0, disposed = false;
+    const distance = () => Math.max(0, track.scrollWidth - viewport.clientWidth);
+    const update = (value) => {
+      active = Math.min(cards.length - 1, Math.round(value * (cards.length - 1)));
+      const label = `${String(active + 1).padStart(2, '0')} / ${String(cards.length).padStart(2, '0')}`;
+      if (count.textContent !== label) count.textContent = label;
+      previous.disabled = active === 0; next.disabled = active === cards.length - 1;
+      fill.style.transform = `scaleX(${value})`;
+    };
+    const jump = (index) => {
+      if (!tween || !section.classList.contains('chapter-enabled')) return;
+      const trigger = tween.scrollTrigger;
+      const target = Math.max(0, Math.min(index, cards.length - 1));
+      window.scrollTo({top: trigger.start + (trigger.end - trigger.start) * target / (cards.length - 1), behavior: 'smooth'});
+    };
+    const reset = () => {
+      if (tween) { tween.scrollTrigger.kill(true); tween.kill(); tween = null; }
+      section.classList.remove('chapter-enabled');
+      track.classList.remove('chapter-horizontal');
+      gsap.set(track, {clearProps: 'transform'});
+    };
+    const setup = () => {
+      if (disposed) return;
+      reset();
+      if (track.querySelector('details[open]') || matchMedia('print').matches) return;
+      track.classList.add('chapter-horizontal');
+      // Long content gets the full vertical page instead of a clipped pinned frame.
+      if (track.getBoundingClientRect().height + 105 > innerHeight || distance() < 1) {
+        track.classList.remove('chapter-horizontal');
+        return;
+      }
+      section.classList.add('chapter-enabled');
+      update(0);
+      tween = gsap.to(track, {x: () => -distance(), ease: 'none', scrollTrigger: {
+        trigger: section, start: 'top 24px', end: () => '+=' + distance(), pin: true, scrub: .6,
+        invalidateOnRefresh: true, onUpdate: self => update(self.progress)
+      }});
+    };
+    const focusCard = event => {
+      const index = cards.findIndex(card => card.contains(event.target));
+      if (section.classList.contains('chapter-enabled')) {
+        viewport.scrollLeft = 0;
+        requestAnimationFrame(() => { viewport.scrollLeft = 0; });
+        if (index >= 0 && index !== active) jump(index);
+      }
+    };
+    const hashCard = () => {
+      const hash = location.hash.slice(1);
+      const index = cards.findIndex(card => card.id === hash || [...card.querySelectorAll('[id]')].some(el => el.id === hash));
+      if (index >= 0) jump(index);
+    };
+    const onToggle = event => {
+      if (!(event.target instanceof HTMLDetailsElement)) return;
+      const card = event.target.closest('article, li');
+      const wasHorizontal = section.classList.contains('chapter-enabled');
+      setup();
+      ScrollTrigger.refresh();
+      if (wasHorizontal && event.target.open && card) card.scrollIntoView({block: 'start'});
+    };
+    const beforePrint = () => reset();
+    const previousClick = () => jump(active - 1);
+    const nextClick = () => jump(active + 1);
+    previous.addEventListener('click', previousClick);
+    next.addEventListener('click', nextClick);
+    track.addEventListener('focusin', focusCard);
+    track.addEventListener('toggle', onToggle, true);
+    window.addEventListener('hashchange', hashCard);
+    window.addEventListener('resize', setup);
+    window.addEventListener('beforeprint', beforePrint);
+    window.addEventListener('afterprint', setup);
+    document.fonts.ready.then(() => { if (!disposed) { setup(); ScrollTrigger.refresh(); hashCard(); } });
+    return () => {
+      disposed = true;
+      reset();
+      track.removeEventListener('focusin', focusCard);
+      track.removeEventListener('toggle', onToggle, true);
+      window.removeEventListener('hashchange', hashCard);
+      window.removeEventListener('resize', setup);
+      window.removeEventListener('beforeprint', beforePrint);
+      window.removeEventListener('afterprint', setup);
+      track.classList.remove('chapter-track');
+      section.before(track);
+      section.remove();
+    };
+  });
 })();

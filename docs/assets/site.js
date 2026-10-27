@@ -192,8 +192,9 @@
       gsap.from('.home-introduction, .page-deck, .quiet-note', {y: 26, opacity: 0, delay: 0.22, duration: 0.9, ease: 'power3.out', clearProps: 'all'});
       const entries = document.querySelectorAll('.research-entry:not([data-focus-panel]), .project-story:not([data-focus-panel]), .app-story, .academic-record, .featured-product, .work-directory, .about-aside, .about-prose, .award-row, .honor-story, .resume-section, .next-section, main > .source-note');
       entries.forEach((entry, index) => {
+        if (entry.matches('.alternating-story, .app-story, .honor-story, .about-aside, .about-prose, .resume-section, .academic-record')) return;
         const targets = entry.matches('.featured-product, .work-directory, .about-aside, .about-prose, .award-row, .honor-story, .source-note') ? [entry] : [...entry.children];
-        const settings = {y: 52, opacity: 0, duration: 0.95, stagger: 0.13, ease: 'power3.out', clearProps: 'all'};
+        const settings = {y: 16, duration: 0.65, stagger: 0.08, ease: 'power3.out', clearProps: 'transform'};
         if (window.ScrollTrigger) {
           gsap.from(targets, {...settings, scrollTrigger: {trigger: entry, start: 'top 91%', once: true}});
         } else gsap.from(targets, settings);
@@ -329,41 +330,143 @@
 (() => {
   const demo = document.querySelector('[data-braille-demo]');
   if (!demo) return;
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const pause = demo.querySelector('[data-braille-pause]');
-  let step = 0, timer, paused = reduced.matches;
+  const replay = demo.querySelector('[data-braille-replay]');
+  const title = demo.querySelector('[data-braille-title]');
+  const status = demo.querySelector('[data-braille-status]');
+  const note = demo.querySelector('[data-braille-note]');
+  const copy = [title, status, note];
+  const rows = [...demo.querySelectorAll('.braille-demo-row')];
+  const cells = [...demo.querySelectorAll('.braille-sample')];
+  const results = [...demo.querySelectorAll('[data-braille-result]')];
+  const line = demo.querySelector('[data-braille-scan]');
+  const progress = demo.querySelector('[data-braille-progress]');
+  const values = ['⠉⠁⠙', '⠙⠕⠛', '⠎⠝'];
+  const labels = ['Braille letters c a d, incorrect translation of cat', 'Braille letters d o g', 'Braille letters s n, missing u'];
   const titles = ['Start with English text.', 'Converting to Braille…', 'Validator scanning…', 'Two translation errors detected.'];
-  const statuses = ['Source text: cat · dog · sun', 'The translation introduces two deliberate mistakes.', 'The validator compares the Braille against the English source.', 'The validator flags a wrong letter and an omitted letter.'];
-  const notes = ['English text goes in first. Watch the Braille translation appear next.', 'cat becomes cad in Braille. sun loses its middle letter. These errors are intentional.', 'Checking the translated letters against the source words…', 'cat: expected ⠞ (t), found ⠙ (d). sun: missing ⠥ (u). dog matches.'];
-  function render() {
-    demo.querySelector('[data-braille-step]').textContent = `0${step + 1} / 04`;
-    demo.querySelector('[data-braille-title]').textContent = titles[step];
-    demo.querySelector('[data-braille-status]').textContent = statuses[step];
-    demo.querySelector('[data-braille-note]').textContent = notes[step];
-    demo.querySelectorAll('[data-braille-result]').forEach((result, i) => {
-      result.textContent = step === 0 ? 'Source' : step === 1 ? 'Translated' : step === 2 ? 'Scanning…' : i === 1 ? 'Matches' : i === 0 ? 'Wrong letter' : 'Missing letter';
-      result.dataset.error = String(step === 3 && i !== 1);
-    });
-    const cat = demo.querySelector('[data-braille-cell="0"]');
-    const sun = demo.querySelector('[data-braille-cell="2"]');
-    cat.textContent = step === 0 ? '—' : '⠉⠁⠙';
-    cat.setAttribute('aria-label', step === 0 ? 'Awaiting translation' : 'Braille letters c a d, incorrect translation of cat');
-    sun.textContent = step === 0 ? '—' : '⠎⠝';
-    sun.setAttribute('aria-label', step === 0 ? 'Awaiting translation' : 'Braille letters s n, missing u');
-    const dog = demo.querySelectorAll('.braille-sample')[1];
-    dog.textContent = step === 0 ? '—' : '⠙⠕⠛';
-    dog.setAttribute('aria-label', step === 0 ? 'Awaiting translation' : 'Braille letters d o g');
+  const statuses = ['Source text: cat · dog · sun', 'Watch each word become Braille.', 'The validator compares the translation against the English source.', 'The validator flags a wrong letter and an omitted letter.'];
+  const notes = ['English text goes in first. Watch the Braille translation appear next.', 'The sample translation contains two deliberate mistakes.', 'The scan checks each word against the source.', 'cat: expected ⠞ (t), found ⠙ (d). sun: missing ⠥ (u). dog matches.'];
+  let timeline, isPaused = false, hiddenPause = false;
+  const setHeader = step => {
     demo.dataset.phase = String(step);
-    pause.textContent = paused ? 'Play' : 'Pause';
-    pause.setAttribute('aria-pressed', String(paused));
-  }
-  function schedule() {
-    clearTimeout(timer);
-    if (!paused) timer = setTimeout(() => { step = (step + 1) % 4; render(); schedule(); }, step === 2 || step === 3 ? 4000 : 2400);
-  }
-  pause.addEventListener('click', () => { paused = !paused; render(); schedule(); });
-  demo.querySelector('[data-braille-replay]').addEventListener('click', () => { step = 0; paused = reduced.matches; render(); schedule(); });
-  reduced.addEventListener('change', () => { paused = reduced.matches; render(); schedule(); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) clearTimeout(timer); else schedule(); });
-  render(); schedule();
+    demo.querySelector('[data-braille-step]').textContent = `0${step + 1} / 04`;
+    title.textContent = titles[step]; status.textContent = statuses[step]; note.textContent = notes[step];
+  };
+  const setCell = (i, converted) => {
+    cells[i].textContent = converted ? values[i] : '—';
+    cells[i].setAttribute('aria-label', converted ? labels[i] : 'Awaiting translation');
+  };
+  const setResult = (i, text, error = false) => {
+    results[i].textContent = text;
+    results[i].dataset.error = String(error);
+    rows[i].dataset.error = String(error);
+  };
+  const reset = () => {
+    setHeader(0);
+    rows.forEach((row, i) => {setCell(i, false); setResult(i, 'Waiting');});
+  };
+  const showResult = () => {
+    setHeader(3);
+    rows.forEach((row, i) => {setCell(i, true); setResult(i, i === 1 ? 'Matches' : i === 0 ? 'Wrong letter' : 'Missing letter', i !== 1);});
+  };
+  reset();
+  if (!window.gsap) {showResult(); pause.hidden = true; replay.hidden = true; return;}
+  timeline = gsap.timeline({paused: true, repeat: -1});
+  const changeHeader = (step, delay = 0) => {
+    timeline.to(copy, {opacity: 0, y: -4, duration: .16, stagger: .025, ease: 'power1.in'}, `+=${delay}`)
+      .call(() => setHeader(step))
+      .to(copy, {opacity: 1, y: 0, duration: .3, stagger: .035, ease: 'power2.out'});
+  };
+  changeHeader(1, 1.1);
+  cells.forEach((cell, i) => {
+    timeline.to([cell, results[i]], {opacity: 0, y: -3, duration: .13})
+      .call(() => {setCell(i, true); setResult(i, 'Translated');})
+      .fromTo([cell, results[i]], {opacity: 0, y: 6}, {opacity: 1, y: 0, duration: .33, ease: 'power2.out'});
+  });
+  changeHeader(2, .35);
+  timeline.call(() => rows.forEach((row, i) => setResult(i, 'Checking…')))
+    .set(line, {y: 0, opacity: 0})
+    .to(line, {opacity: 1, duration: .2});
+  rows.forEach((row, i) => {
+    timeline.to(line, {y: () => row.offsetTop + row.offsetHeight, duration: .72, ease: 'power1.inOut'})
+      .to(results[i], {opacity: 0, y: -3, duration: .12})
+      .call(() => setResult(i, i === 1 ? 'Matches' : i === 0 ? 'Wrong letter' : 'Missing letter', i !== 1))
+      .fromTo(results[i], {opacity: 0, y: 5}, {opacity: 1, y: 0, duration: .28, ease: 'power2.out'});
+  });
+  timeline.to(line, {opacity: 0, duration: .25});
+  changeHeader(3, .15);
+  timeline.to([...copy, ...cells, ...results], {opacity: 0, y: -3, duration: .25, stagger: .015}, '+=3.5')
+    .call(reset)
+    .set(line, {opacity: 0, y: 0})
+    .fromTo([...copy, ...cells, ...results], {opacity: 0, y: 5}, {opacity: 1, y: 0, duration: .35, stagger: .015, ease: 'power2.out'});
+  const duration = timeline.duration();
+  timeline.fromTo(progress, {scaleX: 0}, {scaleX: 1, duration, ease: 'none'}, 0);
+  const setPaused = value => {
+    isPaused = value;
+    pause.textContent = value ? 'Play' : 'Pause';
+    pause.setAttribute('aria-pressed', String(value));
+    if (value) timeline.pause(); else timeline.play();
+  };
+  const applyMotion = () => {
+    if (reduced.matches) {
+      timeline.pause(0);
+      gsap.set([...copy, ...cells, ...results, line, progress], {clearProps: 'all'});
+      showResult(); pause.hidden = true; replay.hidden = true;
+    } else {
+      pause.hidden = false; replay.hidden = false; reset();
+      timeline.restart(); setPaused(false);
+    }
+  };
+  pause.addEventListener('click', () => setPaused(!isPaused));
+  replay.addEventListener('click', () => {reset(); timeline.restart(); setPaused(false);});
+  reduced.addEventListener('change', applyMotion);
+  document.addEventListener('visibilitychange', () => {
+    if (reduced.matches) return;
+    if (document.hidden && !isPaused) {hiddenPause = true; timeline.pause();}
+    else if (!document.hidden && hiddenPause) {hiddenPause = false; if (!isPaused) timeline.play();}
+  });
+  applyMotion();
+})();
+
+// Scroll-led entrances animate the existing content without trapping the page.
+(() => {
+ const header = document.querySelector('.site-header');
+ const menu = document.querySelector('.menu-toggle');
+ const nav = document.querySelector('#site-nav');
+ if (!header || !menu || !nav) return;
+ let frame = 0;
+ const update = () => {
+  frame = 0;
+  const range = document.documentElement.scrollHeight - innerHeight;
+  header.style.setProperty('--reading-progress', String(range > 0 ? Math.max(0, Math.min(1, scrollY / range)) : 0));
+ };
+ const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
+ addEventListener('scroll', schedule, {passive: true});
+ addEventListener('resize', schedule);
+ document.addEventListener('click', event => {
+  if (innerWidth > 900 && document.body.classList.contains('nav-open') && !nav.contains(event.target) && !menu.contains(event.target)) menu.click();
+ });
+ schedule();
+ if (!window.gsap || !window.ScrollTrigger) return;
+ gsap.matchMedia().add('(prefers-reduced-motion: no-preference)', () => {
+  const context = gsap.context(() => {
+   gsap.utils.toArray('.alternating-story, .app-story, .honors-lead, .honor-story, .about-aside, .about-prose, .resume-section, .academic-record').forEach(entry => {
+    const children = entry.matches('.about-aside, .about-prose, .honor-story') ? [entry] : [...entry.children];
+    children.forEach((element, index) => {
+     element.classList.add('storytelling-reveal');
+     const siblings = [...entry.parentElement.children];
+     const side = entry.matches('.honor-story') ? siblings.indexOf(entry) % 2 : index % 2;
+     gsap.fromTo(element, {x: () => {
+      const rect = element.getBoundingClientRect();
+      return side ? Math.max(0, Math.min(36, innerWidth - rect.right - 2)) : -Math.max(0, Math.min(36, rect.left - 2));
+     }, y: 18, opacity: 0}, {
+      x: 0, y: 0, opacity: 1, duration: .75, ease: 'power3.out', clearProps: 'transform,opacity',
+      scrollTrigger: {trigger: entry, start: 'top bottom', toggleActions: 'play none none reverse'}
+     });
+    });
+   });
+  });
+  return () => {context.revert(); document.querySelectorAll('.storytelling-reveal').forEach(element => element.classList.remove('storytelling-reveal'));};
+ });
 })();

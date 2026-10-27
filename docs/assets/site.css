@@ -230,3 +230,15 @@ body>main.frame .prose>p:not(.overline),body>main.frame .entry-body>p:not(.entry
 body>main.frame .overline{font-size:11px!important}
 @media(max-width:680px){:root{--type-page:40px;--type-section:29px;--type-subheading:23px;--type-deck:18px}body>main.frame .braille-demo h3{font-size:26px!important}}
 @media print{body>main.frame h1{font-size:32pt!important}body>main.frame h2{font-size:14pt!important}body>main.frame h3{font-size:11pt!important}body>main.frame .page-deck{font-size:12pt!important}}
+
+/* Keep reading text consistent and open the navigation from the left. */
+.about-prose>p:first-child{color:inherit}
+@media(min-width:901px){
+ .site-header{inset:0 auto 0 0;border-left:0;border-right:1px solid var(--line)}
+ .site-header::before{inset:0 0 0 68px}
+ .site-header::after{left:0;right:auto}
+ #site-nav{left:68px;right:auto;transform:translateX(calc(-100% - 68px))}
+ body.nav-open #site-nav{transform:translateX(0)}
+ body>main.frame,body>footer.frame{margin-left:calc(68px + var(--page-gutter));margin-right:var(--page-gutter)}
+ .desktop-wordmark{left:calc(68px + var(--page-gutter))}
+}

@@ -1,6 +1,6 @@
 const steps=[['Start with English text','Source words: cat · dog · sun','cat · dog · sun'],['Translate into Braille','Prepared uncontracted Braille examples.','⠉⠁⠞ · ⠙⠕⠛ · ⠎⠥⠝'],['Review a potential error','The final word has an incorrect last character: ⠍ instead of ⠝.','⠉⠁⠞ · ⠙⠕⠛ · ⠎⠥⠍'],['Proofread the result','A human proofreader reviews the flagged translation and corrects it.','⠉⠁⠞ · ⠙⠕⠛ · ⠎⠥⠝']];
 let step=0;
-document.querySelector('#walk-next').addEventListener('click',event=>{
+function advanceWalkthrough(){
  step=(step+1)%steps.length;
  document.querySelector('#walk-title').textContent=(step+1)+'. '+steps[step][0];
  document.querySelector('#walk-copy').textContent=steps[step][1];
@@ -14,5 +14,8 @@ document.querySelector('#walk-next').addEventListener('click',event=>{
   error.title='Incorrect character: m instead of n';
   example.replaceChildren(document.createTextNode(steps[step][2].slice(0,-1)),error);
  }
- event.target.textContent=step===steps.length-1?'Replay ↻':'Next step →';
-});
+ }
+setInterval(()=>{
+ const bounds=document.querySelector('#walk-example').getBoundingClientRect();
+ if(!document.hidden&&bounds.bottom>0&&bounds.top<window.innerHeight) advanceWalkthrough();
+},5000);

@@ -41,3 +41,5 @@ a{color:var(--accent)}.wordmark,.desktop-wordmark,h1 a,h2 a,h3 a{color:var(--ink
 
 /* White panels and teal action highlights from the supplied sample. */
 .recognition-grid article,.reference-card,.featured-reference,.detail-box,.resume-section>div,.demo-card,.research-list .research-entry,.honor-boxes article,.blog-empty{background:var(--surface)}#site-nav a{color:var(--ink)}#site-nav a:hover,#site-nav a[aria-current]{color:var(--accent)}.intro-actions a:first-child:hover,.contact-links>a:first-child:hover,.mystera-visit:hover,#pocketsmart .pocket-download:hover{background:var(--accent-hover);filter:none}.intro-actions a:first-child,.contact-links>a:first-child,.mystera-visit,#pocketsmart .pocket-download{transition:background-color .2s ease}
+
+.honor-more{grid-column:1/-1}.honor-more>summary{width:fit-content;cursor:pointer;color:var(--accent);font-size:14px;font-weight:500;padding:10px 0}.honor-more>summary:focus-visible{outline:2px solid var(--accent);outline-offset:4px}.honor-more-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding-top:16px}@media(max-width:767px){.honor-more-grid{grid-template-columns:1fr}}

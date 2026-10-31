@@ -35,3 +35,6 @@ a{color:var(--accent)}.wordmark,.desktop-wordmark,h1 a,h2 a,h3 a{color:var(--ink
 #pocketsmart .pocket-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px;margin-top:12px}#pocketsmart .pocket-actions a{font-size:14px;line-height:20px}#pocketsmart .pocket-download{display:inline-flex;align-items:center;gap:10px;padding:10px 16px;border-radius:7px;background:var(--accent);color:var(--paper);font-weight:500}#pocketsmart .pocket-download:hover{filter:brightness(.92)}#pocketsmart .pocket-details{color:var(--accent);text-underline-offset:4px}#pocketsmart .pocket-details:hover{text-decoration:underline}@media(max-width:480px){#pocketsmart .pocket-actions{flex-direction:column;align-items:flex-start;gap:12px}}
 
 .braille-cell{display:inline-block;white-space:pre}.braille-error{transition:background-color .4s ease,color .4s ease,outline-color .4s ease}.youtube-tag{align-items:center;gap:8px}.youtube-tag svg{flex-shrink:0}
+
+/* Give dates and mentorship separate lines across research and project cards. */
+.research-list .research-meta{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}.research-list .research-meta .research-date{text-align:left;white-space:normal;margin:0}.research-list .research-meta>div:empty{display:none}

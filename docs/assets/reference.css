@@ -60,3 +60,6 @@ body{font-size:15px;line-height:1.6}.page-heading h1,.portfolio-heading h1,body[
 
 /* Audit corrections: shared section headings and action text. */
 .home-recognition h2,.resume-profile h2,.resume-section h2{font-size:21px;line-height:1.4}.resume-heading p{font-size:15px;line-height:1.65}#pocketsmart .pocket-actions a,.mystera-visit{font-size:13px}@media(max-width:767px){.home-recognition h2,.resume-profile h2,.resume-section h2{font-size:19px;line-height:1.4}}
+
+/* Match the awards list panel to the adjacent academic record. */
+.honors-overview>div:first-child{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:28px}.honors-overview .honor-row:last-child{border-bottom:0;padding-bottom:0}@media(max-width:480px){.honors-overview>div:first-child{padding:24px}}

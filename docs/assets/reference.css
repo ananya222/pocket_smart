@@ -99,3 +99,7 @@ a.reference-card:hover{border-color:var(--accent)}
 #main .reference-card:hover>b{color:var(--accent-hover)}
 #main .research-documents .ui-button{flex-wrap:wrap;gap:4px 8px}
 #main .research-documents .ui-button span{font:inherit;color:inherit;white-space:normal}
+
+.mystera-brand{background:#fff6ea}.braille-table-wrap{overflow-x:auto}.braille-table{width:100%;border-collapse:collapse;table-layout:fixed;text-align:left;background:var(--surface)}.braille-table th,.braille-table td{padding:14px 10px;border:1px solid var(--line);vertical-align:middle}.braille-table thead th{background:rgba(0,128,128,.08);font-weight:600}.braille-table tbody th{font-weight:500}.braille-table [data-result]{font-size:14px;overflow-wrap:anywhere}.braille-table .braille-example{font-size:30px;letter-spacing:.08em}.braille-table tr[data-scanning]{background:rgba(0,128,128,.1);box-shadow:inset 3px 0 var(--accent)}.braille-table [data-state=wrong]{color:#a33426}.braille-table [data-state=correct]{color:var(--accent)}.braille-controls{display:flex;gap:12px;margin-top:20px}@media(max-width:480px){.braille-table th,.braille-table td{padding:12px 5px}.braille-table .braille-example{font-size:24px}}
+
+.braille-table{min-width:560px}.braille-table th:nth-child(1){width:18%}.braille-table th:nth-child(2),.braille-table th:nth-child(4){width:24%}.braille-table th:nth-child(3){width:34%}

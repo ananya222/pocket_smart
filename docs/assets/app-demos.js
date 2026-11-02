@@ -36,6 +36,8 @@
   corrected.setAttribute('aria-label', row.dataset.correctedLabel);
   corrected.dataset.changed = String(!valid);
   result.dataset.state = valid ? 'correct' : 'wrong';
+  result.classList.add('braille-result-reveal');
+  corrected.classList.add('braille-result-reveal');
  };
  const tick = () => {
   if (index > 0) finishRow(rows[index - 1]);
@@ -59,6 +61,8 @@
    result.textContent = 'Waiting'; delete result.dataset.state;
    const corrected = row.querySelector('[data-corrected-result]');
    corrected.textContent = '—'; corrected.removeAttribute('aria-label'); delete corrected.dataset.changed;
+   result.classList.remove('braille-result-reveal');
+   corrected.classList.remove('braille-result-reveal');
   });
   copy.textContent = 'I compare each English word with its converted Braille, identify errors, and show the corrected Braille.';
   if (reduced.matches) {

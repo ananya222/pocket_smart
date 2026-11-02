@@ -69,7 +69,7 @@ body:is([data-page=research],[data-page=projects]) .research-list .research-entr
 .paper-links{display:flex;flex-wrap:wrap;gap:8px 20px;margin:0 0 18px}.paper-links a{display:inline-flex;align-items:center;justify-content:center;padding:7px 11px;border:1px solid rgba(0,128,128,.22);border-radius:6px;background:rgba(0,128,128,.06);font-size:12px;font-weight:500;line-height:1.5;color:var(--accent);text-decoration:none;transition:background-color .2s ease,border-color .2s ease}.paper-links a:hover{background:rgba(0,128,128,.12);border-color:var(--accent)}
 
 /* Shared typography and interaction styles for every portfolio page. */
-:root{--text-size:15px;--action-size:13px;--title-size:30px;--section-size:21px;--control-radius:8px}
+:root{--text-size:15px;--action-size:13px;--title-size:30px;--section-size:21px;--control-radius:6px}
 body{font-size:var(--text-size);line-height:1.65}
 #main h1{font-size:var(--title-size);line-height:1.3;color:var(--ink)}
 #main h2{font-size:var(--section-size);line-height:1.4;color:var(--ink);font-weight:600}
@@ -77,13 +77,12 @@ body{font-size:var(--text-size);line-height:1.65}
 #main a.ui-link{font-family:var(--sans);font-size:var(--action-size);line-height:1.5;font-weight:500;color:var(--accent);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px;transition:color .2s ease}
 #main a.ui-link:hover{color:var(--accent-hover)}
 #main p a.ui-link,#main li a.ui-link{font-size:inherit;font-weight:inherit}
-#main a.ui-button,#main button.ui-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:44px;max-width:100%;padding:10px 18px;border:1px solid var(--accent);border-radius:var(--control-radius);background:var(--accent);color:var(--surface);font:500 var(--action-size)/1.5 var(--sans);text-align:center;text-decoration:none;cursor:pointer;transition:background-color .2s ease,border-color .2s ease,color .2s ease}
+.resume-actions{align-items:center}.intro-actions,.contact-links{gap:12px}.paper-links{gap:8px 12px}
+#main a.ui-button,#main button.ui-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;max-width:100%;padding:7px 14px;border:1px solid var(--accent);border-radius:var(--control-radius);background:var(--accent);color:var(--surface);font:500 var(--action-size)/1.5 var(--sans);text-align:center;text-decoration:none;cursor:pointer;transition:background-color .2s ease,border-color .2s ease,color .2s ease}
 #main a.ui-button:hover,#main button.ui-button:hover{background:var(--accent-hover);border-color:var(--accent-hover);color:var(--surface);filter:none}
-#main a.ui-button-secondary,#main button.ui-button-secondary{background:var(--surface);border-color:var(--accent);color:var(--accent)}
-#main a.ui-button-secondary:hover,#main button.ui-button-secondary:hover{background:rgba(0,128,128,.08);border-color:var(--accent-hover);color:var(--accent-hover)}
-#main .ui-button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+#main .ui-button[aria-pressed=true]{background:var(--accent-hover);border-color:var(--accent-hover);color:var(--surface);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
 #main .ui-button[aria-pressed=true]:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
-#main a.contact-social{width:44px;height:44px;padding:10px;flex-shrink:0}
+#main a.contact-social{width:36px;height:36px;padding:7px;flex-shrink:0}
 a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 #site-nav a{font:500 var(--action-size)/1.5 var(--sans)}
 #site-nav a:hover,#site-nav a[aria-current]{color:var(--accent)}

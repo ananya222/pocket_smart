@@ -11,10 +11,30 @@
   row.removeAttribute('data-scanning');
   const valid = row.dataset.valid === 'true';
   const result = row.querySelector('[data-result]');
-  result.textContent = valid ? '✓ No errors' : row.dataset.error;
+  result.replaceChildren();
+  if (valid) {
+   result.textContent = '✓ No errors';
+  } else {
+   const sample = document.createElement('span');
+   sample.className = 'braille-error-sample';
+   sample.setAttribute('aria-label', row.dataset.error);
+   const original = row.querySelector('td.braille-example').textContent.trim();
+   Array.from(original).forEach((character, position) => {
+    const incorrect = character !== Array.from(row.dataset.corrected)[position];
+    const cell = document.createElement(incorrect ? 'mark' : 'span');
+    cell.textContent = character;
+    if (incorrect) cell.setAttribute('aria-label', 'Incorrect letter t; expected g');
+    sample.append(cell);
+   });
+   const explanation = document.createElement('span');
+   explanation.className = 'braille-error-explanation';
+   explanation.textContent = 'Highlighted: t instead of g';
+   result.append(sample, explanation);
+  }
   const corrected = row.querySelector('[data-corrected-result]');
   corrected.textContent = row.dataset.corrected;
   corrected.setAttribute('aria-label', row.dataset.correctedLabel);
+  corrected.dataset.changed = String(!valid);
   result.dataset.state = valid ? 'correct' : 'wrong';
  };
  const tick = () => {
@@ -38,7 +58,7 @@
    const result = row.querySelector('[data-result]');
    result.textContent = 'Waiting'; delete result.dataset.state;
    const corrected = row.querySelector('[data-corrected-result]');
-   corrected.textContent = '—'; corrected.removeAttribute('aria-label');
+   corrected.textContent = '—'; corrected.removeAttribute('aria-label'); delete corrected.dataset.changed;
   });
   copy.textContent = 'I compare each English word with its converted Braille, identify errors, and show the corrected Braille.';
   if (reduced.matches) {

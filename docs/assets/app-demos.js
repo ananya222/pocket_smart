@@ -64,7 +64,7 @@
    result.classList.remove('braille-result-reveal');
    corrected.classList.remove('braille-result-reveal');
   });
-  copy.textContent = 'I compare each English word with its converted Braille, identify errors, and show the corrected Braille.';
+  copy.textContent = 'In this demo, I compare each English word with its converted Braille, identify errors, and show the correction.';
   if (reduced.matches) {
    rows.forEach(finishRow); index = rows.length; tick();
   } else tick();

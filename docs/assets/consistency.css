@@ -62,3 +62,7 @@ body>main.frame{flex:1 0 auto}
 .page-header:has(>.detail-back){position:relative}
 .page-header>.detail-back{position:absolute;top:var(--space-4);margin:0}
 }
+
+@media(min-width:1024px){
+.honors-overview>.academic-panel{align-self:start;height:fit-content}
+}

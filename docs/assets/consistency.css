@@ -56,8 +56,6 @@ a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var
 }
 @media(min-width:1024px){
 body>main.frame{flex:1 0 auto}
-.honors-overview{align-items:stretch}
-.honors-overview>.academic-panel{height:auto;align-self:stretch}
 #main .honors-heading{padding-top:var(--space-6)}
 }
 @media(min-width:1024px){

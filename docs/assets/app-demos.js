@@ -43,7 +43,7 @@
   if (index > 0) finishRow(rows[index - 1]);
   if (index === rows.length) {
    copy.textContent = 'I found two correct translations and one error: dog ends with ⠞ (t) instead of ⠛ (g).';
-   pause.hidden = true;
+   if (!reduced.matches) timer = setTimeout(start, 3000);
    return;
   }
   rows[index].setAttribute('data-scanning', '');
